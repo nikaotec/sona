@@ -5,19 +5,23 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart'; // Import AdMob
 import 'package:sona/provider/audio_provider.dart';
 import 'package:sona/provider/paywall_provider.dart';
 import 'package:sona/provider/user_data_provider.dart';
 import 'package:sona/screen/category_screen.dart';
+import 'package:sona/service/ad_service.dart';
+import 'package:sona/service/audio_download_service.dart'; // Import AudioDownloadService
 import 'package:sona/screen/login_screen.dart';
 import 'package:sona/screen/onbloarding_screen.dart';
 import 'package:sona/screen/paywall_screen.dart';
 import 'package:sona/screen/player_screen.dart';
 import 'package:sona/screen/profile_screen.dart';
 
-void main() async{
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+  MobileAds.instance.initialize(); // Inicializa o AdMob
   runApp(const SonaApp());
 }
 
@@ -39,9 +43,20 @@ class SonaApp extends StatelessWidget {
 
     return MultiProvider(
       providers: [
-       ChangeNotifierProvider(create: (_) => AudioProvider()),
-        ChangeNotifierProvider(create: (_) => PaywallProvider()),
-        ChangeNotifierProvider(create: (_) => UserDataProvider()),
+        // AdService como Provider simples, pois não é ChangeNotifier
+        Provider<AdService>(create: (_) => AdService()),
+        Provider<AudioDownloadService>(create: (_) => AudioDownloadService()),
+        ChangeNotifierProvider(create: (_) => PaywallProvider()..loadData()), // Carrega dados ao iniciar
+        ChangeNotifierProvider(create: (_) => UserDataProvider()..loadFavorites()), // Assumindo que tem um método para carregar dados
+        // AudioProvider pode depender de AdService, então é bom registrá-lo depois ou injetar AdService
+        ChangeNotifierProxyProvider<AdService, AudioProvider>(
+          create: (context) => AudioProvider(),
+          update: (context, adService, audioProvider) {
+            audioProvider ??= AudioProvider();
+            audioProvider.setAdService(adService); // Injeta AdService
+            return audioProvider;
+          },
+        ),
       ],
       child: MaterialApp.router(
         title: 'Sona',

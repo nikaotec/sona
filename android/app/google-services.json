@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "8867324743",
+    "project_id": "sona-19eb2",
+    "storage_bucket": "sona-19eb2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:8867324743:android:76c9574c94ef42e393e262",
+        "android_client_info": {
+          "package_name": "avs.com.sona"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBq3fUP0hO4aJ1McrlElAt_4HLkTLIXHPc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

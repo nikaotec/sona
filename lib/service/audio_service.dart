@@ -4,8 +4,21 @@ class AudioService {
   final AudioPlayer _player = AudioPlayer();
 
   Future<void> play(String url) async {
-    await _player.setUrl(url);
-    await _player.play();
+    try {
+      if (url.startsWith('assets/')) {
+        // It's an asset
+        await _player.setAsset(url);
+      } else {
+        // It's a URL
+        await _player.setUrl(url);
+      }
+      await _player.play();
+    } catch (e) {
+      // TODO: Consider more robust error handling or logging
+      print("Error playing audio: $e");
+      // Rethrow or handle as per app's error strategy
+      rethrow;
+    }
   }
 
   void pause() => _player.pause();
