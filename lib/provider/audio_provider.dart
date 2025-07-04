@@ -54,6 +54,7 @@ class AudioProvider extends ChangeNotifier {
     // O registerPlay já incrementou, então verificamos se é >= 3
     // E como já sabemos que não é premium, não precisamos checar paywall.isPremium de novo.
     if (paywall.dailyPlayCount >= 3) { 
+      paywall.dailyPlayCount =0; // Reseta o contador de reproduções diárias
       _adService?.showRewardedAd(
         onUserEarnedRewardCallback: () {
           debugPrint("Usuário ganhou recompensa por assistir o anúncio antes de tocar a música.");

@@ -47,7 +47,7 @@ class SonaApp extends StatelessWidget {
         Provider<AdService>(create: (_) => AdService()),
         Provider<AudioDownloadService>(create: (_) => AudioDownloadService()),
         ChangeNotifierProvider(create: (_) => PaywallProvider()..loadData()), // Carrega dados ao iniciar
-        ChangeNotifierProvider(create: (_) => UserDataProvider()..loadFavorites()), // Assumindo que tem um método para carregar dados
+        ChangeNotifierProvider(create: (_) => UserDataProvider()), // Assumindo que tem um método para carregar dados
         // AudioProvider pode depender de AdService, então é bom registrá-lo depois ou injetar AdService
         ChangeNotifierProxyProvider<AdService, AudioProvider>(
           create: (context) => AudioProvider(),

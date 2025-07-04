@@ -36,8 +36,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
       return const Scaffold(body: Center(child: Text('Nenhum áudio selecionado')));
     }
 
-    final userData = Provider.of<UserDataProvider>(context, listen: false);
-    final isFav = userData.favorites.any((a) => a.id == audio.id);
+    // final userData = Provider.of<UserDataProvider>(context, listen: false);
+    // final isFav = userData.favorites.any((a) => a.id == audio.id);
 
     return Scaffold(
       appBar: AppBar(title: Text(audio.title)),
@@ -64,10 +64,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
               );
             },
           ),
-          IconButton(
-            icon: Icon(isFav ? Icons.favorite : Icons.favorite_border),
-            onPressed: () => userData.toggleFavorite(audio),
-          ),
+          // IconButton(
+          //   icon: Icon(isFav ? Icons.favorite : Icons.favorite_border),
+          //   onPressed: () => userData.toggleFavorite(audio),
+          // ),
         ],
       ),
     );

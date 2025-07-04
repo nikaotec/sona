@@ -6,6 +6,10 @@ class PaywallProvider extends ChangeNotifier {
   bool _isPremium = false;
 
   int get dailyPlayCount => _dailyPlayCount;
+  set dailyPlayCount(int count) {
+    _dailyPlayCount = count;
+    notifyListeners();
+  }
   bool get isPremium => _isPremium;
 
   Future<void> loadData() async {
@@ -26,9 +30,10 @@ class PaywallProvider extends ChangeNotifier {
 
   Future<bool> registerPlay() async {
     if (_isPremium) return true;
-    if (_dailyPlayCount >= 3) return false;
+   
 
     _dailyPlayCount++;
+     if (_dailyPlayCount >= 3) return false;
     final prefs = await SharedPreferences.getInstance();
     prefs.setInt('dailyPlayCount', _dailyPlayCount);
     notifyListeners();
