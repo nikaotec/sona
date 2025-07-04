@@ -70,7 +70,9 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
-    - assets/music/bineural/binaural-beats_delta_440_440-5hz-48565.mp3
+    - assets/music/
+    - assets/music/bineural/
+    - assets/music/manifest.json
     # - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see

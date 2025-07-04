@@ -1,206 +1,233 @@
 import 'package:flutter/material.dart';
+import 'package:sona/model/audio_model.dart';
+import 'package:sona/provider/audio_provider.dart';
+import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:sona/provider/paywall_provider.dart';
+import 'package:sona/service/ad_service.dart';
+import 'package:sona/service/audio_download_service.dart';
 
-class CategoryScreen extends StatefulWidget {
+class CategoryScreen extends StatelessWidget {
   const CategoryScreen({super.key});
 
   @override
-  State<CategoryScreen> createState() => _CategoryScreenState();
-}
-
-class _CategoryScreenState extends State<CategoryScreen> {
-  late BannerAd _bannerAd;
-  bool _isBannerAdLoaded = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _initBannerAd();
-  }
-
-  _initBannerAd() {
-    _bannerAd = BannerAd(
-      adUnitId: 'ca-app-pub-3940256099942544/5224354917',
-      size: AdSize.banner,
-      request: const AdRequest(),
-      listener: BannerAdListener(
-        onAdLoaded: (ad) {
-          setState(() {
-            _isBannerAdLoaded = true;
-          });
-        },
-        onAdFailedToLoad: (ad, error) {
-          ad.dispose();
-          print('BannerAd failed to load: $error');
-        },
-      ),
-    );
-    _bannerAd.load();
-  }
-
-  @override
-  void dispose() {
-    _bannerAd.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final List<Map<String, dynamic>> categories = [
+    // Dados das categorias baseados na imagem de referência
+    final categories = [
       {
-        'title': 'Binaural Beats',
-        'subtitle': 'Brainwave entrainment',
-        'icon': Icons.show_chart,
-        'color': const Color(0xFF2A2A3A),
+        'name': 'Binaural Beats',
+        'description': 'Brainwave entrainment',
+        'icon': 'waves',
+        'iconData': Icons.graphic_eq,
       },
       {
-        'title': 'Nature Sounds',
-        'subtitle': 'Rain, Ocean, Wind, and more',
-        'icon': Icons.cloud_outlined,
-        'color': const Color(0xFF2A2A3A),
+        'name': 'Nature Sounds',
+        'description': 'Rain, Ocean, Wind, and more',
+        'icon': 'cloud',
+        'iconData': Icons.cloud,
       },
       {
-        'title': 'White Noise / Pink / Brown',
-        'subtitle': 'Ambient noise generators',
-        'icon': Icons.grain,
-        'color': const Color(0xFF2A2A3A),
+        'name': 'White Noise / Pink / Brown',
+        'description': 'Ambient noise generators',
+        'icon': 'dots',
+        'iconData': Icons.grain,
       },
       {
-        'title': 'Guided Meditations',
-        'subtitle': 'Mindfulness and relaxation',
-        'icon': Icons.self_improvement,
-        'color': const Color(0xFF2A2A3A),
+        'name': 'Guided Meditations',
+        'description': 'Mindfulness and relaxation',
+        'icon': 'meditation',
+        'iconData': Icons.self_improvement,
       },
       {
-        'title': 'Sleep',
-        'subtitle': 'Mixes for deep sleep',
-        'icon': Icons.bedtime,
-        'color': const Color(0xFF2A2A3A),
+        'name': 'Sleep',
+        'description': 'Mixes for deep sleep',
+        'icon': 'sleep',
+        'iconData': Icons.bedtime,
       },
     ];
 
-    final List<Map<String, dynamic>> popularItems = [
-      {
-        'title': 'Tranquil Pond',
-        'subtitle': 'Nature Mix',
-        'image': 'assets/images/tranquil_pond.jpg',
-        'color': const Color(0xFF4A7C7E),
-      },
-      {
-        'title': 'Serenity',
-        'subtitle': 'Sleep Mix',
-        'image': 'assets/images/serenity.jpg',
-        'color': const Color(0xFF5A4FCF),
-      },
+    // Áudios populares para a seção inferior
+    final popularAudios = [
+      AudioModel(
+        id: '1',
+        title: 'Tranquil Pond',
+        url: 'https://example.com/audio1.mp3',
+        category: 'Nature Mix',
+        duration: const Duration(minutes: 10),
+      ),
+      AudioModel(
+        id: '2',
+        title: 'Serenity',
+        url: 'https://example.com/audio2.mp3',
+        category: 'Sleep Mix',
+        duration: const Duration(minutes: 10),
+        isPremium: true,
+      ),
     ];
 
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: const Color(0xFF1A1B2E), // Fundo escuro da imagem
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1A1A2E),
+        backgroundColor: const Color(0xFF1A1B2E),
         elevation: 0,
         title: const Text(
           'MindWave',
           style: TextStyle(
             color: Colors.white,
-            fontSize: 28,
+            fontSize: 24,
             fontWeight: FontWeight.bold,
           ),
         ),
         actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 16),
-            child: CircleAvatar(
-              backgroundColor: const Color(0xFF2A2A3A),
-              child: IconButton(
-                icon: const Icon(Icons.person, color: Colors.white),
-                onPressed: () {
-                  context.go('/profile');
-                },
-              ),
-            ),
+          IconButton(
+            icon: const Icon(Icons.person, color: Colors.white),
+            onPressed: () {
+              // Navegar para perfil
+            },
           ),
         ],
       ),
       body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(20.0),
+          padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Título Categories
               const Text(
                 'Categories',
                 style: TextStyle(
+                  color: Colors.white,
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
                 ),
               ),
               const SizedBox(height: 24),
               
-              // Categories List
-              ListView.builder(
+              // Lista de categorias
+              ...categories.map((category) {
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2A2B3E), // Cor dos cards
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.all(16),
+                    leading: Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF3A3B4E),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        category['iconData'] as IconData,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                    title: Text(
+                      category['name'] as String,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    subtitle: Text(
+                      category['description'] as String,
+                      style: const TextStyle(
+                        color: Colors.grey,
+                        fontSize: 14,
+                      ),
+                    ),
+                    trailing: const Icon(
+                      Icons.chevron_right,
+                      color: Colors.grey,
+                      size: 24,
+                    ),
+                    onTap: () {
+                      // Navegar para a tela de listagem de músicas da categoria
+                      context.push(
+                        '/category-music-list',
+                        extra: {
+                          'categoryName': category['name'],
+                          'categoryIcon': category['icon'],
+                          'categoryDescription': category['description'],
+                        },
+                      );
+                    },
+                  ),
+                );
+              }).toList(),
+              
+              const SizedBox(height: 32),
+              
+              // Seção Popular
+              const Text(
+                'Popular',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              
+              // Grid de áudios populares
+              GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: categories.length,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  childAspectRatio: 1.2,
+                ),
+                itemCount: popularAudios.length,
                 itemBuilder: (context, index) {
-                  final category = categories[index];
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 16),
-                    child: GestureDetector(
-                      onTap: () {
-                        print('Category tapped: ${category['title']}');
-                      },
-                      child: Container(
+                  final audio = popularAudios[index];
+                  return GestureDetector(
+                    onTap: () {
+                      _handlePlay(context, audio);
+                    },
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        gradient: index == 0
+                            ? const LinearGradient(
+                                colors: [Color(0xFF4A6741), Color(0xFF2D4A2B)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              )
+                            : const LinearGradient(
+                                colors: [Color(0xFF4A3D7A), Color(0xFF2D2A4A)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                      ),
+                      child: Padding(
                         padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: category['color'],
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Row(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.end,
                           children: [
-                            Container(
-                              width: 56,
-                              height: 56,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF3A3A4A),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Icon(
-                                category['icon'],
+                            Text(
+                              audio.title,
+                              style: const TextStyle(
                                 color: Colors.white,
-                                size: 28,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    category['title'],
-                                    style: const TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    category['subtitle'],
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.grey[400],
-                                    ),
-                                  ),
-                                ],
+                            const SizedBox(height: 4),
+                            Text(
+                              audio.category,
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 14,
                               ),
-                            ),
-                            const Icon(
-                              Icons.chevron_right,
-                              color: Colors.grey,
-                              size: 24,
                             ),
                           ],
                         ),
@@ -210,142 +237,22 @@ class _CategoryScreenState extends State<CategoryScreen> {
                 },
               ),
               
-              const SizedBox(height: 32),
-              
-              // Popular Section
-              const Text(
-                'Popular',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 16),
-              
-              // Popular Items Grid
-              Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        print('Tranquil Pond tapped');
-                      },
-                      child: Container(
-                        height: 140,
-                        decoration: BoxDecoration(
-                          color: popularItems[0]['color'],
-                          borderRadius: BorderRadius.circular(16),
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              popularItems[0]['color'],
-                              (popularItems[0]['color'] as Color).withOpacity(0.8),
-                            ],
-                          ),
-                        ),
-                        child: Stack(
-                          children: [
-                            Positioned(
-                              bottom: 16,
-                              left: 16,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    popularItems[0]['title'],
-                                    style: const TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  Text(
-                                    popularItems[0]['subtitle'],
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.white.withOpacity(0.8),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        print('Serenity tapped');
-                      },
-                      child: Container(
-                        height: 140,
-                        decoration: BoxDecoration(
-                          color: popularItems[1]['color'],
-                          borderRadius: BorderRadius.circular(16),
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              popularItems[1]['color'],
-                              (popularItems[1]['color'] as Color).withOpacity(0.8),
-                            ],
-                          ),
-                        ),
-                        child: Stack(
-                          children: [
-                            Positioned(
-                              bottom: 16,
-                              left: 16,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    popularItems[1]['title'],
-                                    style: const TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  Text(
-                                    popularItems[1]['subtitle'],
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.white.withOpacity(0.8),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              
               const SizedBox(height: 24),
               
-              // Bottom Player
+              // Player mini na parte inferior (simulando o da imagem)
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF2A2A3A),
-                  borderRadius: BorderRadius.circular(16),
+                  color: const Color(0xFF2A2B3E),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
                   children: [
                     Container(
-                      width: 48,
-                      height: 48,
+                      width: 50,
+                      height: 50,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF3A3A4A),
+                        color: const Color(0xFF3A3B4E),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: const Icon(
@@ -354,56 +261,118 @@ class _CategoryScreenState extends State<CategoryScreen> {
                         size: 24,
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 12),
                     const Expanded(
                       child: Text(
                         'Dreamy Ambience',
                         style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
                           color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
                     IconButton(
+                      icon: const Icon(Icons.play_arrow, color: Colors.white),
                       onPressed: () {
-                        print('Play button tapped');
+                        // Lógica de play/pause
                       },
-                      icon: const Icon(
-                        Icons.play_arrow,
-                        color: Colors.white,
-                        size: 28,
-                      ),
                     ),
                     IconButton(
+                      icon: const Icon(Icons.skip_next, color: Colors.white),
                       onPressed: () {
-                        print('Next button tapped');
+                        // Lógica de próxima música
                       },
-                      icon: const Icon(
-                        Icons.skip_next,
-                        color: Colors.white,
-                        size: 28,
-                      ),
                     ),
                   ],
                 ),
               ),
-              
-              const SizedBox(height: 16),
-              
-              // Banner Ad
-              if (_isBannerAdLoaded)
-                Center(
-                  child: SizedBox(
-                    width: _bannerAd.size.width.toDouble(),
-                    height: _bannerAd.size.height.toDouble(),
-                    child: AdWidget(ad: _bannerAd),
-                  ),
-                ),
             ],
           ),
         ),
       ),
     );
   }
+
+  void _handlePlay(BuildContext context, AudioModel audio) async {
+    if (audio.isPremium) {
+      final paywallProvider = Provider.of<PaywallProvider>(context, listen: false);
+      await paywallProvider.loadData();
+      
+      if (!paywallProvider.isPremium) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${audio.title} é um áudio premium. Assine para ouvir!'),
+            backgroundColor: Colors.amber,
+          ),
+        );
+        return;
+      }
+    }
+    
+    Provider.of<AudioProvider>(context, listen: false).playAudio(context, audio);
+    context.go('/player');
+  }
+
+  void _handleDownload(BuildContext context, AudioModel audio) async {
+    final paywallProvider = Provider.of<PaywallProvider>(context, listen: false);
+    final adService = Provider.of<AdService>(context, listen: false);
+    final audioDownloadService = Provider.of<AudioDownloadService>(context, listen: false);
+
+    await paywallProvider.loadData();
+
+    final String fileName = "${audio.title.replaceAll(' ', '_')}.mp3";
+
+    bool alreadyDownloaded = await audioDownloadService.isDownloaded(fileName);
+    if (alreadyDownloaded) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${audio.title} já foi baixado.')),
+      );
+      return;
+    }
+
+    if (audio.isPremium && !paywallProvider.isPremium) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Assine o plano premium para baixar ${audio.title}.')),
+      );
+      return;
+    }
+
+    if (!paywallProvider.isPremium) {
+      adService.showRewardedAd(
+        onUserEarnedRewardCallback: () {
+          debugPrint("Usuário ganhou recompensa por assistir anúncio antes do download.");
+        },
+        onAdDismissed: () {
+          debugPrint("Anúncio dispensado, iniciando download.");
+          _performDownload(context, audioDownloadService, audio.url, fileName);
+        },
+        onAdFailedToLoadOrShow: (error) {
+          debugPrint("Falha ao carregar/mostrar anúncio para download: $error. Permitindo download mesmo assim.");
+          _performDownload(context, audioDownloadService, audio.url, fileName);
+        },
+      );
+    } else {
+      debugPrint("Usuário premium, iniciando download direto.");
+      _performDownload(context, audioDownloadService, audio.url, fileName);
+    }
+  }
+
+  void _performDownload(BuildContext context, AudioDownloadService downloadService, String url, String fileName) async {
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Baixando ${fileName}...')),
+      );
+      await downloadService.downloadAudio(url, fileName);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${fileName} baixado com sucesso!')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao baixar ${fileName}: $e')),
+      );
+      debugPrint("Erro no download: $e");
+    }
+  }
 }
+

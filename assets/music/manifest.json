@@ -1,0 +1,76 @@
+{
+  "Binaural Beats": [
+    {
+      "id": "local_bb1",
+      "title": "Delta Waves 4Hz",
+      "file": "bineural/binaural-beats_delta_440_440-5hz-48565.mp3",
+      "duration": 1800,
+      "isPremium": false
+    }
+  ],
+  "Nature Sounds": [
+    {
+      "id": "local_ns1",
+      "title": "Ocean Waves",
+      "file": "nature/ocean-waves.mp3",
+      "duration": 2700,
+      "isPremium": false
+    },
+    {
+      "id": "local_ns2",
+      "title": "Forest Rain",
+      "file": "nature/forest-rain.mp3",
+      "duration": 3600,
+      "isPremium": true
+    }
+  ],
+  "White Noise / Pink / Brown": [
+    {
+      "id": "local_wn1",
+      "title": "White Noise",
+      "file": "noise/white-noise.mp3",
+      "duration": 3600,
+      "isPremium": false
+    },
+    {
+      "id": "local_wn2",
+      "title": "Pink Noise",
+      "file": "noise/pink-noise.mp3",
+      "duration": 3600,
+      "isPremium": true
+    }
+  ],
+  "Guided Meditations": [
+    {
+      "id": "local_gm1",
+      "title": "Body Scan Meditation",
+      "file": "meditation/body-scan.mp3",
+      "duration": 900,
+      "isPremium": true
+    },
+    {
+      "id": "local_gm2",
+      "title": "Breathing Exercise",
+      "file": "meditation/breathing.mp3",
+      "duration": 600,
+      "isPremium": false
+    }
+  ],
+  "Sleep": [
+    {
+      "id": "local_sl1",
+      "title": "Deep Sleep Mix",
+      "file": "sleep/deep-sleep.mp3",
+      "duration": 28800,
+      "isPremium": true
+    },
+    {
+      "id": "local_sl2",
+      "title": "Bedtime Stories",
+      "file": "sleep/bedtime-stories.mp3",
+      "duration": 1800,
+      "isPremium": false
+    }
+  ]
+}
+
