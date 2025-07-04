@@ -1,19 +1,18 @@
 import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:sona/utils/ad_config.dart';
 
 class AdService {
   RewardedAd? _rewardedAd;
   bool _isRewardedAdReady = false;
 
-  final String _rewardedAdUnitId = defaultTargetPlatform == TargetPlatform.android
-      ? 'ca-app-pub-3940256099942544/5224354917' // Teste Android
-      : 'ca-app-pub-3940256099942544/1712485313'; // Teste iOS
+  bool get isRewardedAdReady => _isRewardedAdReady;
 
   void loadRewardedAd() {
     if (_isRewardedAdReady) return;
 
     RewardedAd.load(
-      adUnitId: _rewardedAdUnitId,
+      adUnitId: AdConfig.rewardedAdUnitId,
       request: const AdRequest(),
       rewardedAdLoadCallback: RewardedAdLoadCallback(
         onAdLoaded: (RewardedAd ad) {
