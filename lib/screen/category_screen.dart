@@ -3,165 +3,190 @@ import 'package:sona/model/audio_model.dart';
 import 'package:sona/provider/audio_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
-import 'package:sona/provider/paywall_provider.dart';
-import 'package:sona/service/ad_service.dart';
-import 'package:sona/service/audio_download_service.dart'; // Caminho corrigido
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 
-class CategoryScreen extends StatelessWidget {
+class CategoryScreen extends StatefulWidget {
   const CategoryScreen({super.key});
 
   @override
+  State<CategoryScreen> createState() => _CategoryScreenState();
+}
+
+class _CategoryScreenState extends State<CategoryScreen> {
+  late BannerAd _bannerAd;
+  bool _isBannerAdLoaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initBannerAd();
+  }
+
+  _initBannerAd() {
+    _bannerAd = BannerAd(
+      adUnitId: 'ca-app-pub-3940256099942544/5224354917', //  BannerAd., // Use test ad unit ID for development
+      size: AdSize.banner,
+      request: const AdRequest(),
+      listener: BannerAdListener(
+        onAdLoaded: (ad) {
+          setState(() {
+            _isBannerAdLoaded = true;
+          });
+        },
+        onAdFailedToLoad: (ad, error) {
+          ad.dispose();
+          print('BannerAd failed to load: $error');
+        },
+      ),
+    );
+    _bannerAd.load();
+  }
+
+  @override
+  void dispose() {
+    _bannerAd.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final sampleAudios = [
-      AudioModel(
-        id: '1',
-        title: 'Tranquil Pond',
-        url: 'https://example.com/audio1.mp3',
-        category: 'Nature Sounds',
-        duration: const Duration(minutes: 10),
-      ),
-      AudioModel(
-        id: '2',
-        title: 'Body Scan',
-        url: 'https://example.com/audio2.mp3',
-        category: 'Guided Meditations',
-        duration: const Duration(minutes: 10),
-        isPremium: true,
-      ),
-      AudioModel(
-        id: '3',
-        title: 'Binaural Beats Delta',
-        url: 'assets/music/bineural/binaural-beats_delta_440_440-5hz-48565.mp3',
-        category: 'Binaural Beats',
-        duration: const Duration(minutes: 5), // Placeholder duration
-        isPremium: false,
-      ),
+    final List<Map<String, dynamic>> categories = [
+      {
+        'title': 'Binaural Beats',
+        'subtitle': 'Brainwave entrainment',
+        'icon': Icons.headphones,
+      },
+      {
+        'title': 'Nature Sounds',
+        'subtitle': 'Rain, Ocean, Wind, and more',
+        'icon': Icons.cloud,
+      },
+      {
+        'title': 'White / Pink / Brown Noise',
+        'subtitle': 'Ambient noise generators',
+        'icon': Icons.grain,
+      },
+      {
+        'title': 'Guided Meditations',
+        'subtitle': 'Mindfulness and relaxation',
+        'icon': Icons.self_improvement,
+      },
+      {
+        'title': 'Sleep',
+        'subtitle': 'Mixes for deep sleep',
+        'icon': Icons.bedtime,
+      },
+      {
+        'title': 'Ready Made Mixes',
+        'subtitle': 'Curated soundscapes',
+        'icon': Icons.music_note,
+      },
     ];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('MindWave')),
-      body: ListView(
-        children: sampleAudios.map((audio) {
-          return ListTile(
-            title: Text(audio.title),
-            subtitle: Text(audio.category),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (audio.isPremium)
-                  const Icon(Icons.lock)
-                else
-                  // Ícone de Play removido daqui para evitar confusão,
-                  // já que o onTap no ListTile já faz isso.
-                  // Considerar se o ícone de play é realmente necessário aqui se o tile inteiro é clicável.
-                  // Por ora, vamos focar no botão de download.
-                  const SizedBox.shrink(), // Ou mantenha o play_arrow se preferir
-                IconButton(
-                  icon: const Icon(Icons.download),
-                  onPressed: () {
-                    // Lógica de download com anúncio será implementada aqui
-                    _handleDownload(context, audio);
-                  },
-                ),
-              ],
-            ),
-            onTap: () async {
-              if (audio.isPremium) {
-                // TODO: Lógica para lidar com áudio premium (ex: mostrar paywall)
-                // Por enquanto, vamos apenas impedir a reprodução ou fazer um print
-                debugPrint("Tentativa de tocar áudio premium: ${audio.title}");
-                // Ou, se o PaywallProvider já lida com isso no playAudio, pode chamar direto.
-                // Assumindo que playAudio já tem lógica de paywall para áudios premium:
-                // Provider.of<AudioProvider>(context, listen: false).playAudio(context, audio);
-                // context.go('/player');
-                // Por ora, para focar no download, vamos apenas exibir uma mensagem.
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('${audio.title} é um áudio premium. Assine para ouvir e baixar!')),
-                );
-                return;
-              }
-              Provider.of<AudioProvider>(context, listen: false)
-                  .playAudio(context, audio);
-              context.go('/player');
+      appBar: AppBar(
+        title: const Text('MindWave'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.person),
+            onPressed: () {
+              context.go('/profile');
             },
-          );
-        }).toList(),
+          ),
+        ],
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Categories',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: GridView.builder(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                  childAspectRatio: 1.0, // Adjust as needed
+                ),
+                itemCount: categories.length,
+                itemBuilder: (context, index) {
+                  final category = categories[index];
+                  return GestureDetector(
+                    onTap: () {
+                      // TODO: Implement navigation to specific category content
+                      print('Category tapped: ${category['title']}');
+                    },
+                    child: Card(
+                      color: Colors.grey[850],
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(category['icon'], size: 48, color: Colors.white),
+                          const SizedBox(height: 8),
+                          Text(
+                            category['title'],
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          Text(
+                            category['subtitle'],
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[400],
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Popular',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            // TODO: Implement Popular section based on images
+            // For now, a placeholder
+            Container(
+              height: 150,
+              color: Colors.grey[800],
+              child: const Center(child: Text('Popular Section Placeholder')),
+            ),
+            const SizedBox(height: 16),
+            // TODO: Implement bottom player based on images
+            // For now, a placeholder
+            Container(
+              height: 60,
+              color: Colors.grey[900],
+              child: const Center(child: Text('Player Placeholder')),
+            ),
+            if (_isBannerAdLoaded)
+              SizedBox(
+                width: _bannerAd.size.width.toDouble(),
+                height: _bannerAd.size.height.toDouble(),
+                child: AdWidget(ad: _bannerAd),
+              ),
+          ],
+        ),
       ),
     );
   }
-
-  void _handleDownload(BuildContext context, AudioModel audio) async {
-    // Obter os providers necessários
-    final paywallProvider = Provider.of<PaywallProvider>(context, listen: false);
-    final adService = Provider.of<AdService>(context, listen: false);
-    final audioDownloadService = Provider.of<AudioDownloadService>(context, listen: false);
-
-    // Carregar dados do paywall (importante para saber o status premium)
-    await paywallProvider.loadData();
-
-    // Nome do arquivo para salvar (ex: "Tranquil Pond.mp3")
-    // É importante que o AudioModel tenha uma propriedade para o nome do arquivo ou uma forma de derivá-lo.
-    // Assumindo que audio.title é único e adequado para nome de arquivo.
-    // Adicionar extensão .mp3 se não estiver na URL ou título.
-    final String fileName = "${audio.title.replaceAll(' ', '_')}.mp3"; // Simples exemplo de nome de arquivo
-
-    // Verificar se o áudio já foi baixado
-    bool alreadyDownloaded = await audioDownloadService.isDownloaded(fileName);
-    if (alreadyDownloaded) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${audio.title} já foi baixado.')),
-      );
-      return;
-    }
-
-    if (audio.isPremium && !paywallProvider.isPremium) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Assine o plano premium para baixar ${audio.title}.')),
-      );
-      // Opcionalmente, navegar para a tela de paywall:
-      // context.go('/paywall');
-      return;
-    }
-
-    // Lógica para exibir anúncio se não for premium
-    if (!paywallProvider.isPremium) {
-      adService.showRewardedAd(
-        onUserEarnedRewardCallback: () {
-          debugPrint("Usuário ganhou recompensa por assistir anúncio antes do download.");
-          // Aqui você pode, por exemplo, registrar que o usuário ganhou "créditos de download" se aplicável.
-        },
-        onAdDismissed: () {
-          debugPrint("Anúncio dispensado, iniciando download.");
-          _performDownload(context, audioDownloadService, audio.url, fileName);
-        },
-        onAdFailedToLoadOrShow: (error) {
-          debugPrint("Falha ao carregar/mostrar anúncio para download: $error. Permitindo download mesmo assim.");
-          // Decisão de negócios: permitir download mesmo se anúncio falhar?
-          // Por ora, vamos permitir.
-          _performDownload(context, audioDownloadService, audio.url, fileName);
-        },
-      );
-    } else {
-      // Usuário premium, baixa diretamente
-      debugPrint("Usuário premium, iniciando download direto.");
-      _performDownload(context, audioDownloadService, audio.url, fileName);
-    }
-  }
-
-  void _performDownload(BuildContext context, AudioDownloadService downloadService, String url, String fileName) async {
-    try {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Baixando ${fileName}...')),
-      );
-      await downloadService.downloadAudio(url, fileName);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${fileName} baixado com sucesso!')),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao baixar ${fileName}: $e')),
-      );
-      debugPrint("Erro no download: $e");
-    }
-  }
 }
+
+
