@@ -10,17 +10,29 @@ class AudioProvider extends ChangeNotifier {
   final AudioService _service = AudioService();
   AudioModel? _currentAudio;
   bool _isPlaying = false;
-  AdService? _adService; // Adicione uma instância de AdService
+  AdService? _adService;
+  Duration _currentPosition = Duration.zero;
+  Duration _totalDuration = Duration.zero;
 
   AudioModel? get currentAudio => _currentAudio;
   bool get isPlaying => _isPlaying;
+  Duration get currentPosition => _currentPosition;
+  Duration get totalDuration => _totalDuration;
 
-  
+  AudioProvider() {
+    _service.positionStream.listen((position) {
+      _currentPosition = position;
+      notifyListeners();
+    });
+    _service.durationStream.listen((duration) {
+      _totalDuration = duration ?? Duration.zero;
+      notifyListeners();
+    });
+  }
 
-  // Método para injetar AdService, ou pode ser pego via Provider no playAudio
   void setAdService(AdService adService) {
     _adService = adService;
-    _adService?.loadRewardedAd(); // Carrega um anúncio ao definir o serviço
+    _adService?.loadRewardedAd();
   }
 
   void _actuallyPlayAudio(AudioModel audio) async {
@@ -32,7 +44,7 @@ class AudioProvider extends ChangeNotifier {
 
   void playAudio(BuildContext context, AudioModel audio) async {
     final paywall = Provider.of<PaywallProvider>(context, listen: false);
-    _adService ??= Provider.of<AdService>(context, listen: false); 
+    _adService ??= Provider.of<AdService>(context, listen: false);
     await paywall.loadData();
 
     if (paywall.isPremium) {
@@ -40,26 +52,17 @@ class AudioProvider extends ChangeNotifier {
       return;
     }
 
-    // Verifica se pode reproduzir sem anúncio
-    if (paywall.canPlayWithoutAd) {
-      await paywall.registerPlay();
-      _actuallyPlayAudio(audio);
-      return;
-    }
-
-    // Precisa assistir anúncio para continuar
     _adService?.showRewardedAd(
-      onUserEarnedRewardCallback: () async {
+      onUserEarnedRewardCallback: () {
         debugPrint("Usuário ganhou recompensa por assistir o anúncio antes de tocar a música.");
-        await paywall.registerRewardedAdWatched();
       },
       onAdDismissed: () {
         debugPrint("Anúncio dispensado, tocando música.");
         _actuallyPlayAudio(audio);
       },
       onAdFailedToLoadOrShow: (error) {
-        debugPrint("Falha ao carregar/mostrar anúncio: $error. Redirecionando para paywall.");
-        GoRouter.of(context).go('/paywall');
+        debugPrint("Falha ao carregar/mostrar anúncio: $error. Tocando música diretamente.");
+        _actuallyPlayAudio(audio);
       },
     );
   }
@@ -74,6 +77,13 @@ class AudioProvider extends ChangeNotifier {
     _service.stop();
     _isPlaying = false;
     _currentAudio = null;
+    _currentPosition = Duration.zero;
+    _totalDuration = Duration.zero;
     notifyListeners();
   }
+
+  void seek(Duration position) {
+    _service.seek(position);
+  }
 }
+

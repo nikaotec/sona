@@ -25,7 +25,10 @@ class AudioService {
   void stop() => _player.stop();
 
   Stream<Duration> get positionStream => _player.positionStream;
+  Stream<Duration?> get durationStream => _player.durationStream;
   Stream<PlayerState> get playerStateStream => _player.playerStateStream;
 
   Future<void> setVolume(double value) => _player.setVolume(value);
+
+  Future<void> seek(Duration position) => _player.seek(position);
 }

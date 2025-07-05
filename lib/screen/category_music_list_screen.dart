@@ -6,18 +6,16 @@ import 'package:go_router/go_router.dart';
 import 'package:sona/provider/paywall_provider.dart';
 import 'package:sona/service/ad_service.dart';
 import 'package:sona/service/audio_download_service.dart';
-import 'package:sona/service/music_repository_service.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 class CategoryMusicListScreen extends StatefulWidget {
   final String categoryName;
-  final String categoryIcon;
-  final String categoryDescription;
+  final List<AudioModel> audios;
 
   const CategoryMusicListScreen({
     super.key,
     required this.categoryName,
-    required this.categoryIcon,
-    required this.categoryDescription,
+    required this.audios,
   });
 
   @override
@@ -25,395 +23,362 @@ class CategoryMusicListScreen extends StatefulWidget {
 }
 
 class _CategoryMusicListScreenState extends State<CategoryMusicListScreen> {
-  List<AudioModel> categoryAudios = [];
-  bool isLoading = true;
+  BannerAd? _bannerAd;
+  InterstitialAd? _interstitialAd;
+  bool _isBannerAdReady = false;
+  bool _isInterstitialAdReady = false;
+  int _musicPlayCount = 0;
 
   @override
   void initState() {
     super.initState();
-    _loadCategoryAudios();
+    _loadBannerAd();
+    _loadInterstitialAd();
   }
 
-  void _loadCategoryAudios() async {
-    try {
-      final musicService = Provider.of<MusicRepositoryService>(context, listen: false);
-      
-      // Configurar repositório remoto se necessário
-      // musicService.setRemoteRepository('https://your-remote-repo.com');
-      
-      List<AudioModel> musics = await musicService.getMusicsByCategory(widget.categoryName);
-      
-      setState(() {
-        categoryAudios = musics;
-        isLoading = false;
-      });
-    } catch (e) {
-      print('Erro ao carregar músicas: $e');
-      setState(() {
-        categoryAudios = _getFallbackMusicsByCategory(widget.categoryName);
-        isLoading = false;
-      });
-    }
+  void _loadBannerAd() {
+    _bannerAd = BannerAd(
+      adUnitId: 'ca-app-pub-3940256099942544/6300978111', // Test ID
+      request: const AdRequest(),
+      size: AdSize.banner,
+      listener: BannerAdListener(
+        onAdLoaded: (_) {
+          setState(() {
+            _isBannerAdReady = true;
+          });
+        },
+        onAdFailedToLoad: (ad, err) {
+          debugPrint('Failed to load a banner ad: ${err.message}');
+          ad.dispose();
+        },
+      ),
+    );
+
+    _bannerAd?.load();
   }
 
-  // Método de fallback caso o serviço falhe
-  List<AudioModel> _getFallbackMusicsByCategory(String category) {
-    // Dados de exemplo - substitua pela lógica real de carregamento
-    switch (category) {
-      case 'Binaural Beats':
-        return [
-          AudioModel(
-            id: 'bb1',
-            title: 'Delta Waves 4Hz',
-            url: 'assets/music/bineural/binaural-beats_delta_440_440-5hz-48565.mp3',
-            category: 'Binaural Beats',
-            duration: const Duration(minutes: 30),
-            isPremium: false,
-          ),
-          AudioModel(
-            id: 'bb2',
-            title: 'Alpha Waves 10Hz',
-            url: 'https://example.com/alpha-waves.mp3',
-            category: 'Binaural Beats',
-            duration: const Duration(minutes: 25),
-            isPremium: true,
-          ),
-          AudioModel(
-            id: 'bb3',
-            title: 'Theta Waves 6Hz',
-            url: 'https://example.com/theta-waves.mp3',
-            category: 'Binaural Beats',
-            duration: const Duration(minutes: 35),
-            isPremium: false,
-          ),
-          AudioModel(
-            id: 'bb4',
-            title: 'Beta Waves 15Hz',
-            url: 'https://example.com/beta-waves.mp3',
-            category: 'Binaural Beats',
-            duration: const Duration(minutes: 20),
-            isPremium: true,
-          ),
-        ];
-      case 'Nature Sounds':
-        return [
-          AudioModel(
-            id: 'ns1',
-            title: 'Ocean Waves',
-            url: 'https://example.com/ocean-waves.mp3',
-            category: 'Nature Sounds',
-            duration: const Duration(minutes: 45),
-            isPremium: false,
-          ),
-          AudioModel(
-            id: 'ns2',
-            title: 'Forest Rain',
-            url: 'https://example.com/forest-rain.mp3',
-            category: 'Nature Sounds',
-            duration: const Duration(minutes: 60),
-            isPremium: true,
-          ),
-          AudioModel(
-            id: 'ns3',
-            title: 'Mountain Stream',
-            url: 'https://example.com/mountain-stream.mp3',
-            category: 'Nature Sounds',
-            duration: const Duration(minutes: 40),
-            isPremium: false,
-          ),
-        ];
-      case 'Guided Meditations':
-        return [
-          AudioModel(
-            id: 'gm1',
-            title: 'Body Scan Meditation',
-            url: 'https://example.com/body-scan.mp3',
-            category: 'Guided Meditations',
-            duration: const Duration(minutes: 15),
-            isPremium: true,
-          ),
-          AudioModel(
-            id: 'gm2',
-            title: 'Breathing Exercise',
-            url: 'https://example.com/breathing.mp3',
-            category: 'Guided Meditations',
-            duration: const Duration(minutes: 10),
-            isPremium: false,
-          ),
-        ];
-      case 'Sleep':
-        return [
-          AudioModel(
-            id: 'sl1',
-            title: 'Deep Sleep Mix',
-            url: 'https://example.com/deep-sleep.mp3',
-            category: 'Sleep',
-            duration: const Duration(hours: 8),
-            isPremium: true,
-          ),
-          AudioModel(
-            id: 'sl2',
-            title: 'Bedtime Stories',
-            url: 'https://example.com/bedtime-stories.mp3',
-            category: 'Sleep',
-            duration: const Duration(minutes: 30),
-            isPremium: false,
-          ),
-        ];
-      case 'White Noise / Pink / Brown':
-        return [
-          AudioModel(
-            id: 'wn1',
-            title: 'White Noise',
-            url: 'https://example.com/white-noise.mp3',
-            category: 'White Noise / Pink / Brown',
-            duration: const Duration(hours: 1),
-            isPremium: false,
-          ),
-          AudioModel(
-            id: 'wn2',
-            title: 'Pink Noise',
-            url: 'https://example.com/pink-noise.mp3',
-            category: 'White Noise / Pink / Brown',
-            duration: const Duration(hours: 1),
-            isPremium: true,
-          ),
-          AudioModel(
-            id: 'wn3',
-            title: 'Brown Noise',
-            url: 'https://example.com/brown-noise.mp3',
-            category: 'White Noise / Pink / Brown',
-            duration: const Duration(hours: 1),
-            isPremium: false,
-          ),
-        ];
-      default:
-        return [];
-    }
+  void _loadInterstitialAd() {
+    InterstitialAd.load(
+      adUnitId: 'ca-app-pub-3940256099942544/1033173712', // Test ID
+      request: const AdRequest(),
+      adLoadCallback: InterstitialAdLoadCallback(
+        onAdLoaded: (InterstitialAd ad) {
+          _interstitialAd = ad;
+          _isInterstitialAdReady = true;
+          
+          _interstitialAd!.setImmersiveMode(true);
+          _interstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
+            onAdDismissedFullScreenContent: (InterstitialAd ad) {
+              ad.dispose();
+              _loadInterstitialAd(); // Carrega um novo anúncio
+            },
+            onAdFailedToShowFullScreenContent: (InterstitialAd ad, AdError error) {
+              ad.dispose();
+              _loadInterstitialAd(); // Carrega um novo anúncio
+            },
+          );
+        },
+        onAdFailedToLoad: (LoadAdError error) {
+          debugPrint('InterstitialAd failed to load: $error');
+        },
+      ),
+    );
   }
 
-  IconData _getCategoryIcon(String iconName) {
-    switch (iconName) {
-      case 'waves':
-        return Icons.graphic_eq;
-      case 'cloud':
-        return Icons.cloud;
-      case 'dots':
-        return Icons.grain;
-      case 'meditation':
-        return Icons.self_improvement;
-      case 'sleep':
-        return Icons.bedtime;
-      default:
-        return Icons.music_note;
-    }
-  }
-
-  String _formatDuration(Duration duration) {
-    if (duration.inHours > 0) {
-      return '${duration.inHours}h ${duration.inMinutes.remainder(60)}m';
-    } else {
-      return '${duration.inMinutes}m';
+  void _showInterstitialAd() {
+    if (_isInterstitialAdReady && _interstitialAd != null) {
+      _interstitialAd!.show();
+      _isInterstitialAdReady = false;
     }
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF1A1B2E), // Fundo escuro similar à imagem
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF1A1B2E),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => context.pop(),
+  void dispose() {
+    _bannerAd?.dispose();
+    _interstitialAd?.dispose();
+    super.dispose();
+  }
+
+  Widget _buildBannerAd() {
+    if (_isBannerAdReady && _bannerAd != null) {
+      return Container(
+        margin: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFF2A2A3E),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.withOpacity(0.3), width: 1),
         ),
-        title: Text(
-          widget.categoryName,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              child: Row(
+                children: [
+                  Icon(Icons.ads_click, color: Colors.grey[400], size: 16),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Anúncio',
+                    style: TextStyle(
+                      color: Colors.grey[400],
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              alignment: Alignment.center,
+              width: _bannerAd!.size.width.toDouble(),
+              height: _bannerAd!.size.height.toDouble(),
+              child: AdWidget(ad: _bannerAd!),
+            ),
+          ],
+        ),
+      );
+    }
+    return const SizedBox.shrink();
+  }
+
+  Widget _buildNativeAdCard() {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2A2A3E),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.withOpacity(0.3), width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.ads_click, color: Colors.grey[400], size: 16),
+              const SizedBox(width: 6),
+              Text(
+                'Anúncio Patrocinado',
+                style: TextStyle(
+                  color: Colors.grey[400],
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.person, color: Colors.white),
-            onPressed: () {
-              // Navegar para perfil
-            },
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF4A4A8A),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.headphones, color: Colors.white, size: 30),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Premium Music Experience',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Desfrute de música sem anúncios e downloads ilimitados',
+                      style: TextStyle(
+                        color: Colors.grey[300],
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                // Navegar para paywall ou ação do anúncio
+                context.go('/paywall');
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF4A4A8A),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text('Assinar Premium'),
+            ),
           ),
         ],
       ),
-      body: isLoading
-          ? const Center(
-              child: CircularProgressIndicator(
-                color: Colors.white,
-              ),
-            )
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header da categoria
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 60,
-                        height: 60,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF2A2B3E),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(
-                          _getCategoryIcon(widget.categoryIcon),
-                          color: Colors.white,
-                          size: 30,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              widget.categoryName,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              widget.categoryDescription,
-                              style: const TextStyle(
-                                color: Colors.grey,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                // Lista de músicas
-                Expanded(
-                  child: ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    itemCount: categoryAudios.length,
-                    itemBuilder: (context, index) {
-                      final audio = categoryAudios[index];
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF2A2B3E),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.all(16),
-                          leading: Container(
-                            width: 50,
-                            height: 50,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF3A3B4E),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Icon(
-                              Icons.music_note,
-                              color: Colors.white,
-                              size: 24,
-                            ),
-                          ),
-                          title: Text(
-                            audio.title,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          subtitle: Text(
-                            _formatDuration(audio.duration),
-                            style: const TextStyle(
-                              color: Colors.grey,
-                              fontSize: 14,
-                            ),
-                          ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (audio.isPremium)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.amber,
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: const Text(
-                                    'PRO',
-                                    style: TextStyle(
-                                      color: Colors.black,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              const SizedBox(width: 8),
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.download,
-                                  color: Colors.white,
-                                ),
-                                onPressed: () {
-                                  _handleDownload(context, audio);
-                                },
-                              ),
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.play_arrow,
-                                  color: Colors.white,
-                                ),
-                                onPressed: () {
-                                  _handlePlay(context, audio);
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
     );
   }
 
-  void _handlePlay(BuildContext context, AudioModel audio) async {
-    if (audio.isPremium) {
-      final paywallProvider = Provider.of<PaywallProvider>(context, listen: false);
-      await paywallProvider.loadData();
-      
-      if (!paywallProvider.isPremium) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${audio.title} é um áudio premium. Assine para ouvir!'),
-            backgroundColor: Colors.amber,
-          ),
-        );
-        return;
-      }
-    }
+  @override
+  Widget build(BuildContext context) {
+    final paywallProvider = Provider.of<PaywallProvider>(context);
     
-    Provider.of<AudioProvider>(context, listen: false).playAudio(context, audio);
-    context.go('/player');
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.categoryName),
+        backgroundColor: const Color(0xFF1A1A2E),
+        foregroundColor: Colors.white,
+      ),
+      backgroundColor: const Color(0xFF1A1A2E),
+      body: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: _calculateItemCount(paywallProvider.isPremium),
+        itemBuilder: (context, index) {
+          // Para usuários premium, não mostrar anúncios
+          if (paywallProvider.isPremium) {
+            final audio = widget.audios[index];
+            return _buildAudioTile(audio);
+          }
+
+          // Para usuários não premium, intercalar anúncios
+          if (index == 0) {
+            // Banner no topo
+            return _buildBannerAd();
+          } else if (index == 3) {
+            // Anúncio nativo após 2 músicas
+            return _buildNativeAdCard();
+          } else if (index == 7) {
+            // Segundo banner após mais algumas músicas
+            return _buildBannerAd();
+          } else {
+            // Calcular o índice real do áudio
+            int audioIndex = _getAudioIndex(index);
+            if (audioIndex < widget.audios.length) {
+              final audio = widget.audios[audioIndex];
+              return _buildAudioTile(audio);
+            }
+          }
+          
+          return const SizedBox.shrink();
+        },
+      ),
+    );
+  }
+
+  int _calculateItemCount(bool isPremium) {
+    if (isPremium) {
+      return widget.audios.length;
+    }
+    // Para não premium: banner inicial + músicas + anúncios intercalados
+    return widget.audios.length + 3; // +3 para os anúncios
+  }
+
+  int _getAudioIndex(int listIndex) {
+    // Mapear o índice da lista para o índice real do áudio
+    if (listIndex <= 0) return -1; // Banner inicial
+    if (listIndex <= 2) return listIndex - 1; // Primeiras 2 músicas
+    if (listIndex == 3) return -1; // Anúncio nativo
+    if (listIndex <= 6) return listIndex - 2; // Próximas músicas
+    if (listIndex == 7) return -1; // Segundo banner
+    return listIndex - 3; // Músicas restantes
+  }
+
+  Widget _buildAudioTile(AudioModel audio) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2A2A3E),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(16),
+        title: Text(
+          audio.title,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        subtitle: Text(
+          audio.category,
+          style: const TextStyle(
+            color: Colors.grey,
+            fontSize: 14,
+          ),
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (audio.isPremium)
+              const Icon(Icons.lock, color: Colors.amber),
+            const SizedBox(width: 8),
+            IconButton(
+              icon: const Icon(Icons.download, color: Colors.white),
+              onPressed: () {
+                _handleDownload(context, audio);
+              },
+            ),
+          ],
+        ),
+        onTap: () async {
+          if (audio.isPremium) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('${audio.title} é um áudio premium. Assine para ouvir!'),
+                backgroundColor: Colors.amber,
+              ),
+            );
+            return;
+          }
+          
+          // Incrementar contador e mostrar anúncio intersticial a cada 3 músicas
+          _musicPlayCount++;
+          if (_musicPlayCount % 3 == 0) {
+            _showInterstitialAd();
+          }
+          
+          // Exibir anúncio de vídeo recompensado antes de tocar a música
+          final adService = Provider.of<AdService>(context, listen: false);
+          final paywallProvider = Provider.of<PaywallProvider>(context, listen: false);
+          
+          await paywallProvider.loadData();
+          
+          if (!paywallProvider.isPremium) {
+            adService.showRewardedAd(
+              onUserEarnedRewardCallback: () {
+                debugPrint("Usuário ganhou recompensa por assistir anúncio antes de tocar música.");
+              },
+              onAdDismissed: () {
+                debugPrint("Anúncio dispensado, tocando música.");
+                Provider.of<AudioProvider>(context, listen: false)
+                    .playAudio(context, audio);
+                context.go('/player');
+              },
+              onAdFailedToLoadOrShow: (error) {
+                debugPrint("Falha ao carregar/mostrar anúncio: $error. Tocando música diretamente.");
+                Provider.of<AudioProvider>(context, listen: false)
+                    .playAudio(context, audio);
+                context.go('/player');
+              },
+            );
+          } else {
+            // Usuário premium, toca diretamente
+            Provider.of<AudioProvider>(context, listen: false)
+                .playAudio(context, audio);
+            context.go('/player');
+          }
+        },
+      ),
+    );
   }
 
   void _handleDownload(BuildContext context, AudioModel audio) async {
@@ -428,20 +393,14 @@ class _CategoryMusicListScreenState extends State<CategoryMusicListScreen> {
     bool alreadyDownloaded = await audioDownloadService.isDownloaded(fileName);
     if (alreadyDownloaded) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${audio.title} já foi baixado.'),
-          backgroundColor: Colors.green,
-        ),
+        SnackBar(content: Text('${audio.title} já foi baixado.')),
       );
       return;
     }
 
     if (audio.isPremium && !paywallProvider.isPremium) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Assine o plano premium para baixar ${audio.title}.'),
-          backgroundColor: Colors.amber,
-        ),
+        SnackBar(content: Text('Assine o plano premium para baixar ${audio.title}.')),
       );
       return;
     }
@@ -469,27 +428,17 @@ class _CategoryMusicListScreenState extends State<CategoryMusicListScreen> {
   void _performDownload(BuildContext context, AudioDownloadService downloadService, String url, String fileName) async {
     try {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Baixando ${fileName}...'),
-          backgroundColor: Colors.blue,
-        ),
+        SnackBar(content: Text('Baixando ${fileName}...')),
       );
       await downloadService.downloadAudio(url, fileName);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${fileName} baixado com sucesso!'),
-          backgroundColor: Colors.green,
-        ),
+        SnackBar(content: Text('${fileName} baixado com sucesso!')),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Erro ao baixar ${fileName}: $e'),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text('Erro ao baixar ${fileName}: $e')),
       );
       debugPrint("Erro no download: $e");
     }
   }
 }
-
