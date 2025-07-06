@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import 'package:sona/provider/audio_provider.dart';
-import 'package:sona/provider/user_data_provider.dart';
 
 class PlayerScreen extends StatefulWidget {
   const PlayerScreen({super.key});
@@ -15,7 +15,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     String twoDigits(int n) => n.toString().padLeft(2, '0');
     String twoDigitMinutes = twoDigits(duration.inMinutes.remainder(60));
     String twoDigitSeconds = twoDigits(duration.inSeconds.remainder(60));
-    return '${twoDigitMinutes}:${twoDigitSeconds}';
+    return '$twoDigitMinutes:$twoDigitSeconds';
   }
 
   @override
@@ -119,15 +119,14 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 ),
               ),
               
-              // Informações da música
+              // Informações da música e controles
               Expanded(
                 flex: 2,
                 child: Padding(
                   padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.1),
                   child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly, // Distribui o espaço igualmente
                     children: [
-                      SizedBox(height: screenHeight * 0.03),
-                      
                       // Categoria
                       Text(
                         audio.category,
@@ -137,8 +136,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
                           fontWeight: FontWeight.w400,
                         ),
                       ),
-                      
-                      SizedBox(height: screenHeight * 0.01),
                       
                       // Título da música
                       Text(
@@ -151,39 +148,34 @@ class _PlayerScreenState extends State<PlayerScreen> {
                         ),
                       ),
                       
-                      SizedBox(height: screenHeight * 0.01),
-                      
-                      // Autor e duração
-                      Text(
-                        'John Smith • ${_formatDuration(audio.duration)}',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: screenWidth * 0.04,
-                          fontWeight: FontWeight.w400,
-                        ),
-                      ),
-                      
-                      SizedBox(height: screenHeight * 0.04),
-                      
                       // Barra de progresso
                       Column(
                         children: [
-                          SliderTheme(
-                            data: SliderTheme.of(context).copyWith(
-                              activeTrackColor: const Color(0xFF6B73FF),
-                              inactiveTrackColor: Colors.white24,
-                              thumbColor: const Color(0xFF6B73FF),
-                              thumbShape: RoundSliderThumbShape(
-                                enabledThumbRadius: screenWidth * 0.02,
+                          Container(
+                            padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.02),
+                            child: SliderTheme(
+                              data: SliderTheme.of(context).copyWith(
+                                activeTrackColor: const Color(0xFF6B73FF),
+                                inactiveTrackColor: Colors.white24,
+                                thumbColor: const Color(0xFF6B73FF),
+                                thumbShape: RoundSliderThumbShape(
+                                  enabledThumbRadius: screenWidth * 0.02,
+                                ),
+                                trackHeight: screenHeight * 0.005,
+                                overlayShape: SliderComponentShape.noOverlay,
                               ),
-                              trackHeight: screenHeight * 0.005,
-                            ),
-                            child: Slider(
-                              value: audioProvider.currentPosition.inSeconds.toDouble(),
-                              max: audioProvider.totalDuration.inSeconds.toDouble(),
-                              onChanged: (value) {
-                                audioProvider.seek(Duration(seconds: value.toInt()));
-                              },
+                              child: Slider(
+                                value: audioProvider.currentPosition.inSeconds.toDouble().clamp(
+                                  0.0, 
+                                  audioProvider.totalDuration.inSeconds.toDouble()
+                                ),
+                                max: audioProvider.totalDuration.inSeconds.toDouble() > 0 
+                                    ? audioProvider.totalDuration.inSeconds.toDouble() 
+                                    : 1.0,
+                                onChanged: (value) {
+                                  audioProvider.seek(Duration(seconds: value.toInt()));
+                                },
+                              ),
                             ),
                           ),
                           
@@ -213,8 +205,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
                         ],
                       ),
                       
-                      SizedBox(height: screenHeight * 0.03),
-                      
                       // Controles de reprodução
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -225,7 +215,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                             iconSize: screenWidth * 0.1,
                             color: Colors.white,
                             onPressed: () {
-                              // Lógica para música anterior
+                              // TODO: Implementar música anterior
                             },
                           ),
                           
@@ -263,79 +253,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
                             iconSize: screenWidth * 0.1,
                             color: Colors.white,
                             onPressed: () {
-                              // Lógica para próxima música
+                              // TODO: Implementar próxima música
                             },
                           ),
                         ],
                       ),
                     ],
                   ),
-                ),
-              ),
-              
-              // Seção inferior com avatar do autor
-              Container(
-                padding: EdgeInsets.all(screenWidth * 0.05),
-                child: Row(
-                  children: [
-                    // Avatar do autor
-                    Container(
-                      width: screenWidth * 0.12,
-                      height: screenWidth * 0.12,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white24, width: screenWidth * 0.005),
-                      ),
-                      child: ClipOval(
-                        child: Container(
-                          decoration: const BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [Color(0xFFFF6B6B), Color(0xFFFFE66D)],
-                            ),
-                          ),
-                          child: Icon(
-                            Icons.person,
-                            color: Colors.white,
-                            size: screenWidth * 0.075,
-                          ),
-                        ),
-                      ),
-                    ),
-                    
-                    SizedBox(width: screenWidth * 0.04),
-                    
-                    // Nome do autor
-                    Text(
-                      'John Smith',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: screenWidth * 0.045,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    
-                    const Spacer(),
-                    
-                    // Barra de progresso inferior (placeholder)
-                    Container(
-                      width: screenWidth * 0.25,
-                      height: screenHeight * 0.005,
-                      decoration: BoxDecoration(
-                        color: Colors.white24,
-                        borderRadius: BorderRadius.circular(screenWidth * 0.005),
-                      ),
-                      child: FractionallySizedBox(
-                        alignment: Alignment.centerLeft,
-                        widthFactor: 0.3,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(screenWidth * 0.005),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
                 ),
               ),
             ],
@@ -345,3 +269,5 @@ class _PlayerScreenState extends State<PlayerScreen> {
     );
   }
 }
+
+
