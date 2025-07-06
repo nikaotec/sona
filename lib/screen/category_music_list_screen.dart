@@ -10,6 +10,7 @@ import 'package:sona/service/video_ad_service.dart';
 import 'package:sona/service/audio_download_service.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:sona/components/banner_ad_widget.dart';
+import 'package:sona/widgtes/mini_player_widget.dart';
 import 'package:sona/widgtes/subscription_banner.dart';
 
 class CategoryMusicListScreen extends StatefulWidget {
@@ -326,6 +327,11 @@ class _CategoryMusicListScreenState extends State<CategoryMusicListScreen> {
         ],
       );
         },
+      ),
+      // Mini Player flutuante
+      bottomSheet: const MiniPlayerWidget(
+        showOnlyWhenPlaying: true,
+        margin: EdgeInsets.all(16),
       ),
     );
   }

@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:sona/model/audio_model.dart';
 import 'package:sona/provider/subscription_provider.dart';
+import 'package:sona/widgtes/mini_player_widget.dart';
 
 class CategoryScreen extends StatelessWidget {
   const CategoryScreen({super.key});
@@ -368,58 +369,15 @@ class CategoryScreen extends StatelessWidget {
                 ),
 
                 const SizedBox(height: 24),
-
-                // Player mini na parte inferior
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2A2A3E),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF3A3A4E),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(
-                          Icons.music_note,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      const Expanded(
-                        child: Text(
-                          'Dreamy Ambience',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.play_arrow, color: Colors.white),
-                        onPressed: () {
-                          // Lógica de play
-                        },
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.skip_next, color: Colors.white),
-                        onPressed: () {
-                          // Lógica de próxima música
-                        },
-                      ),
-                    ],
-                  ),
-                ),
               ],
             );
           },
         ),
+      ),
+      // Mini Player flutuante
+      bottomSheet: const MiniPlayerWidget(
+        showOnlyWhenPlaying: true,
+        margin: EdgeInsets.all(16),
       ),
     );
   }

@@ -6,6 +6,7 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:sona/provider/audio_provider.dart';
 import 'package:sona/provider/paywall_provider.dart';
 import 'package:sona/provider/subscription_provider.dart';
+import 'package:sona/provider/video_ad_provider.dart';
 import 'package:sona/provider/user_data_provider.dart';
 import 'package:sona/screen/category_screen.dart';
 import 'package:sona/screen/category_music_list_screen.dart';
@@ -89,8 +90,21 @@ class SonaApp extends StatelessWidget {
         Provider<BannerAdService>(create: (_) => BannerAdService()),
         Provider<VideoAdService>(create: (_) => VideoAdService()),
         Provider<AudioDownloadService>(create: (_) => AudioDownloadService()),
-        ChangeNotifierProvider(create: (_) => PaywallProvider()..loadData()),
         ChangeNotifierProvider(create: (_) => SubscriptionProvider()),
+        ChangeNotifierProxyProvider<SubscriptionProvider, VideoAdProvider>(
+          create: (context) => VideoAdProvider(Provider.of<SubscriptionProvider>(context, listen: false)),
+          update: (context, subscriptionProvider, videoAdProvider) {
+            return videoAdProvider ?? VideoAdProvider(subscriptionProvider);
+          },
+        ),
+        ChangeNotifierProxyProvider<SubscriptionProvider, PaywallProvider>(
+          create: (context) => PaywallProvider(),
+          update: (context, subscriptionProvider, paywallProvider) {
+            paywallProvider ??= PaywallProvider();
+            paywallProvider.loadData(); // Garante que os dados são carregados após a inicialização
+            return paywallProvider;
+          },
+        ),
         ChangeNotifierProvider(create: (_) => UserDataProvider()),
         ChangeNotifierProxyProvider<AdService, AudioProvider>(
           create: (context) => AudioProvider(),
