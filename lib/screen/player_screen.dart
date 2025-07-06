@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sona/provider/audio_provider.dart';
+import 'package:sona/components/banner_ad_widget.dart';
+import 'package:sona/provider/paywall_provider.dart';
 
 class PlayerScreen extends StatefulWidget {
   const PlayerScreen({super.key});
@@ -21,6 +23,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   @override
   Widget build(BuildContext context) {
     final audioProvider = Provider.of<AudioProvider>(context);
+    final paywallProvider = Provider.of<PaywallProvider>(context);
     final audio = audioProvider.currentAudio;
 
     if (audio == null) {
@@ -63,7 +66,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   children: [
                     IconButton(
                       icon: const Icon(Icons.arrow_back, color: Colors.white),
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () => context.go('/categories'),
                     ),
                     Expanded(
                       child: Text(
@@ -80,6 +83,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   ],
                 ),
               ),
+              
+              // Banner de anúncio para usuários não premium
+              if (!paywallProvider.isPremium)
+                const BannerAdWidget(),
               
               // Imagem principal (placeholder para pessoa meditando)
               Expanded(
@@ -229,20 +236,20 @@ class _PlayerScreenState extends State<PlayerScreen> {
                               color: Colors.white,
                               shape: BoxShape.circle,
                             ),
-                            child: IconButton(
-                              icon: Icon(
-                                audioProvider.isPlaying ? Icons.pause : Icons.play_arrow,
-                                size: screenWidth * 0.1,
-                                color: const Color(0xFF1A1A2E),
-                              ),
-                              onPressed: () {
-                                if (audioProvider.isPlaying) {
-                                  audioProvider.pauseAudio();
-                                } else {
-                                  audioProvider.playAudio(context, audio);
-                                }
-                              },
-                            ),
+                            child: audioProvider.isLoading
+                                ? const CircularProgressIndicator(
+                                    color: Color(0xFF1A1A2E),
+                                  )
+                                : IconButton(
+                                    icon: Icon(
+                                      audioProvider.isPlaying ? Icons.pause : Icons.play_arrow,
+                                      size: screenWidth * 0.1,
+                                      color: const Color(0xFF1A1A2E),
+                                    ),
+                                    onPressed: () {
+                                      audioProvider.togglePlayPause(context);
+                                    },
+                                  ),
                           ),
                           
                           SizedBox(width: screenWidth * 0.05),
@@ -269,5 +276,4 @@ class _PlayerScreenState extends State<PlayerScreen> {
     );
   }
 }
-
 

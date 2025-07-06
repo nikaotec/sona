@@ -5,8 +5,10 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sona/provider/paywall_provider.dart';
 import 'package:sona/service/ad_service.dart';
+import 'package:sona/service/video_ad_service.dart';
 import 'package:sona/service/audio_download_service.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:sona/components/banner_ad_widget.dart';
 
 class CategoryMusicListScreen extends StatefulWidget {
   final String categoryName;
@@ -25,6 +27,7 @@ class CategoryMusicListScreen extends StatefulWidget {
 class _CategoryMusicListScreenState extends State<CategoryMusicListScreen> {
   BannerAd? _bannerAd;
   InterstitialAd? _interstitialAd;
+  late VideoAdService _videoAdService;
   bool _isBannerAdReady = false;
   bool _isInterstitialAdReady = false;
   int _musicPlayCount = 0;
@@ -34,6 +37,8 @@ class _CategoryMusicListScreenState extends State<CategoryMusicListScreen> {
     super.initState();
     _loadBannerAd();
     _loadInterstitialAd();
+    _videoAdService = VideoAdService();
+    _videoAdService.loadRewardedInterstitialAd();
   }
 
   void _loadBannerAd() {
@@ -48,7 +53,6 @@ class _CategoryMusicListScreenState extends State<CategoryMusicListScreen> {
           });
         },
         onAdFailedToLoad: (ad, err) {
-          debugPrint('Failed to load a banner ad: ${err.message}');
           ad.dispose();
         },
       ),
@@ -79,7 +83,6 @@ class _CategoryMusicListScreenState extends State<CategoryMusicListScreen> {
           );
         },
         onAdFailedToLoad: (LoadAdError error) {
-          debugPrint('InterstitialAd failed to load: $error');
         },
       ),
     );
@@ -96,6 +99,7 @@ class _CategoryMusicListScreenState extends State<CategoryMusicListScreen> {
   void dispose() {
     _bannerAd?.dispose();
     _interstitialAd?.dispose();
+    _videoAdService.dispose();
     super.dispose();
   }
 
@@ -238,37 +242,45 @@ class _CategoryMusicListScreenState extends State<CategoryMusicListScreen> {
         foregroundColor: Colors.white,
       ),
       backgroundColor: const Color(0xFF1A1A2E),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: _calculateItemCount(paywallProvider.isPremium),
-        itemBuilder: (context, index) {
-          // Para usuários premium, não mostrar anúncios
-          if (paywallProvider.isPremium) {
-            final audio = widget.audios[index];
-            return _buildAudioTile(audio);
-          }
-
-          // Para usuários não premium, intercalar anúncios
-          if (index == 0) {
-            // Banner no topo
-            return _buildBannerAd();
-          } else if (index == 3) {
-            // Anúncio nativo após 2 músicas
-            return _buildNativeAdCard();
-          } else if (index == 7) {
-            // Segundo banner após mais algumas músicas
-            return _buildBannerAd();
-          } else {
-            // Calcular o índice real do áudio
-            int audioIndex = _getAudioIndex(index);
-            if (audioIndex < widget.audios.length) {
-              final audio = widget.audios[audioIndex];
-              return _buildAudioTile(audio);
-            }
-          }
+      body: Column(
+        children: [
+          // Banner de anúncio no topo para usuários não premium
+          if (!paywallProvider.isPremium)
+            const BannerAdWidget(),
           
-          return const SizedBox.shrink();
-        },
+          // Lista de músicas
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: _calculateItemCount(paywallProvider.isPremium),
+              itemBuilder: (context, index) {
+                // Para usuários premium, não mostrar anúncios
+                if (paywallProvider.isPremium) {
+                  final audio = widget.audios[index];
+                  return _buildAudioTile(audio);
+                }
+
+                // Para usuários não premium, intercalar anúncios
+                if (index == 3) {
+                  // Anúncio nativo após 3 músicas
+                  return _buildNativeAdCard();
+                } else if (index == 7) {
+                  // Segundo banner após mais algumas músicas
+                  return _buildBannerAd();
+                } else {
+                  // Calcular o índice real do áudio
+                  int audioIndex = _getAudioIndex(index);
+                  if (audioIndex < widget.audios.length && audioIndex >= 0) {
+                    final audio = widget.audios[audioIndex];
+                    return _buildAudioTile(audio);
+                  }
+                }
+                
+                return const SizedBox.shrink();
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -277,18 +289,17 @@ class _CategoryMusicListScreenState extends State<CategoryMusicListScreen> {
     if (isPremium) {
       return widget.audios.length;
     }
-    // Para não premium: banner inicial + músicas + anúncios intercalados
-    return widget.audios.length + 3; // +3 para os anúncios
+    // Para não premium: músicas + anúncios intercalados
+    return widget.audios.length + 2; // +2 para os anúncios
   }
 
   int _getAudioIndex(int listIndex) {
     // Mapear o índice da lista para o índice real do áudio
-    if (listIndex <= 0) return -1; // Banner inicial
-    if (listIndex <= 2) return listIndex - 1; // Primeiras 2 músicas
+    if (listIndex <= 2) return listIndex; // Primeiras 3 músicas
     if (listIndex == 3) return -1; // Anúncio nativo
-    if (listIndex <= 6) return listIndex - 2; // Próximas músicas
+    if (listIndex <= 6) return listIndex - 1; // Próximas músicas
     if (listIndex == 7) return -1; // Segundo banner
-    return listIndex - 3; // Músicas restantes
+    return listIndex - 2; // Músicas restantes
   }
 
   Widget _buildAudioTile(AudioModel audio) {
@@ -340,38 +351,34 @@ class _CategoryMusicListScreenState extends State<CategoryMusicListScreen> {
             return;
           }
           
-          // Incrementar contador e mostrar anúncio intersticial a cada 3 músicas
-          _musicPlayCount++;
-          if (_musicPlayCount % 3 == 0) {
-            _showInterstitialAd();
-          }
-          
-          // Exibir anúncio de vídeo recompensado antes de tocar a música
-          final adService = Provider.of<AdService>(context, listen: false);
           final paywallProvider = Provider.of<PaywallProvider>(context, listen: false);
-          
           await paywallProvider.loadData();
           
           if (!paywallProvider.isPremium) {
-            adService.showRewardedAd(
-              onUserEarnedRewardCallback: () {
-                debugPrint("Usuário ganhou recompensa por assistir anúncio antes de tocar música.");
-              },
-              onAdDismissed: () {
-                debugPrint("Anúncio dispensado, tocando música.");
-                Provider.of<AudioProvider>(context, listen: false)
-                    .playAudio(context, audio);
-                context.go('/player');
-              },
-              onAdFailedToLoadOrShow: (error) {
-                debugPrint("Falha ao carregar/mostrar anúncio: $error. Tocando música diretamente.");
-                Provider.of<AudioProvider>(context, listen: false)
-                    .playAudio(context, audio);
-                context.go('/player');
-              },
-            );
+            // Mostrar anúncio em vídeo para usuários não assinantes
+            if (_videoAdService.isRewardedInterstitialAdReady) {
+              _videoAdService.showVideoAd(
+                onUserEarnedRewardCallback: () {
+                },
+                onAdDismissed: () {
+                  Provider.of<AudioProvider>(context, listen: false)
+                      .playAudio(context, audio);
+                  context.go('/player');
+                },
+                onAdFailedToLoadOrShow: (error) {
+                  Provider.of<AudioProvider>(context, listen: false)
+                      .playAudio(context, audio);
+                  context.go('/player');
+                },
+              );
+            } else {
+              // Se o anúncio não está pronto, toca a música diretamente
+              Provider.of<AudioProvider>(context, listen: false)
+                  .playAudio(context, audio);
+              context.go('/player');
+            }
           } else {
-            // Usuário premium, toca diretamente
+            // Usuário premium, navega diretamente
             Provider.of<AudioProvider>(context, listen: false)
                 .playAudio(context, audio);
             context.go('/player');
@@ -408,19 +415,15 @@ class _CategoryMusicListScreenState extends State<CategoryMusicListScreen> {
     if (!paywallProvider.isPremium) {
       adService.showRewardedAd(
         onUserEarnedRewardCallback: () {
-          debugPrint("Usuário ganhou recompensa por assistir anúncio antes do download.");
         },
         onAdDismissed: () {
-          debugPrint("Anúncio dispensado, iniciando download.");
           _performDownload(context, audioDownloadService, audio.url, fileName);
         },
         onAdFailedToLoadOrShow: (error) {
-          debugPrint("Falha ao carregar/mostrar anúncio para download: $error. Permitindo download mesmo assim.");
           _performDownload(context, audioDownloadService, audio.url, fileName);
         },
       );
     } else {
-      debugPrint("Usuário premium, iniciando download direto.");
       _performDownload(context, audioDownloadService, audio.url, fileName);
     }
   }
@@ -438,7 +441,8 @@ class _CategoryMusicListScreenState extends State<CategoryMusicListScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Erro ao baixar ${fileName}: $e')),
       );
-      debugPrint("Erro no download: $e");
     }
   }
 }
+
+

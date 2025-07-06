@@ -18,12 +18,12 @@ class AdService {
         onAdLoaded: (RewardedAd ad) {
           _rewardedAd = ad;
           _isRewardedAdReady = true;
-          debugPrint('✅ RewardedAd carregado.');
+          // debugPrint("✅ RewardedAd carregado."); // Removido
         },
         onAdFailedToLoad: (LoadAdError error) {
           _rewardedAd = null;
           _isRewardedAdReady = false;
-          debugPrint('❌ Erro ao carregar RewardedAd: $error');
+          // debugPrint("❌ Erro ao carregar RewardedAd: $error"); // Removido
         },
       ),
     );
@@ -37,16 +37,17 @@ class AdService {
     if (_rewardedAd != null && _isRewardedAdReady) {
       _rewardedAd!.fullScreenContentCallback = FullScreenContentCallback(
         onAdShowedFullScreenContent: (ad) =>
-            debugPrint('📺 Anúncio mostrado: $ad'),
+            // debugPrint("📺 Anúncio mostrado: $ad"), // Removido
+            null,
         onAdDismissedFullScreenContent: (ad) {
-          debugPrint('🔙 Anúncio fechado: $ad');
+          // debugPrint("🔙 Anúncio fechado: $ad"); // Removido
           ad.dispose();
           _isRewardedAdReady = false;
           onAdDismissed();
           loadRewardedAd(); // Pré-carrega o próximo anúncio
         },
         onAdFailedToShowFullScreenContent: (ad, error) {
-          debugPrint('❌ Falha ao exibir anúncio: $error');
+          // debugPrint("❌ Falha ao exibir anúncio: $error"); // Removido
           ad.dispose();
           _isRewardedAdReady = false;
           onAdFailedToLoadOrShow(error.message);
@@ -56,15 +57,15 @@ class AdService {
 
       _rewardedAd!.show(
         onUserEarnedReward: (ad, reward) {
-          debugPrint('🎉 Usuário ganhou recompensa: ${reward.amount} ${reward.type}');
+          // debugPrint("🎉 Usuário ganhou recompensa: ${reward.amount} ${reward.type}"); // Removido
           onUserEarnedRewardCallback();
         },
       );
 
       _rewardedAd = null; // Previne múltiplos usos
     } else {
-      debugPrint('⚠️ Anúncio não está pronto');
-      onAdFailedToLoadOrShow('Anúncio não está pronto.');
+      // debugPrint("⚠️ Anúncio não está pronto"); // Removido
+      onAdFailedToLoadOrShow("Anúncio não está pronto.");
       loadRewardedAd();
     }
   }
@@ -73,3 +74,5 @@ class AdService {
     _rewardedAd?.dispose();
   }
 }
+
+

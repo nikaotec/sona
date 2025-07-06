@@ -1,6 +1,3 @@
-
-
-
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -12,6 +9,7 @@ import 'package:sona/provider/user_data_provider.dart';
 import 'package:sona/screen/category_screen.dart';
 import 'package:sona/service/ad_service.dart';
 import 'package:sona/service/banner_ad_service.dart';
+import 'package:sona/service/video_ad_service.dart';
 import 'package:sona/service/audio_download_service.dart';
 import 'package:sona/screen/login_screen.dart';
 import 'package:sona/screen/onbloarding_screen.dart';
@@ -32,20 +30,46 @@ class SonaApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final _router = GoRouter(
+      initialLocation: '/',
       routes: [
-        GoRoute(path: '/', builder: (_, __) => const OnboardingScreen()),
-        GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
-        GoRoute(path: '/categories', builder: (_, __) => const CategoryScreen()),
-        GoRoute(path: '/player', builder: (_, __) => const PlayerScreen()),
-        GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
-        GoRoute(path: '/paywall', builder: (_, __) => const PaywallScreen()),
+        GoRoute(
+          path: '/',
+          builder: (_, __) => const OnboardingScreen(),
+        ),
+        GoRoute(
+          path: '/login',
+          builder: (_, __) => const LoginScreen(),
+        ),
+        GoRoute(
+          path: '/categories',
+          builder: (_, __) => const CategoryScreen(),
+        ),
+        GoRoute(
+          path: '/player',
+          builder: (_, __) => const PlayerScreen(),
+        ),
+        GoRoute(
+          path: '/profile',
+          builder: (_, __) => const ProfileScreen(),
+        ),
+        GoRoute(
+          path: '/paywall',
+          builder: (_, __) => const PaywallScreen(),
+        ),
       ],
+      // Configuração de redirecionamento se necessário
+      redirect: (context, state) {
+        // Aqui você pode adicionar lógica de redirecionamento se necessário
+        // Por exemplo, verificar se o usuário está logado
+        return null; // Não redireciona por padrão
+      },
     );
 
     return MultiProvider(
       providers: [
         Provider<AdService>(create: (_) => AdService()),
         Provider<BannerAdService>(create: (_) => BannerAdService()),
+        Provider<VideoAdService>(create: (_) => VideoAdService()),
         Provider<AudioDownloadService>(create: (_) => AudioDownloadService()),
         ChangeNotifierProvider(create: (_) => PaywallProvider()..loadData()),
         ChangeNotifierProvider(create: (_) => UserDataProvider()),
@@ -60,8 +84,16 @@ class SonaApp extends StatelessWidget {
       ],
       child: MaterialApp.router(
         title: 'Sona',
-        theme: ThemeData.dark(),
+        theme: ThemeData.dark().copyWith(
+          // Personalização do tema se necessário
+          primaryColor: const Color(0xFF6B73FF),
+          colorScheme: const ColorScheme.dark(
+            primary: Color(0xFF6B73FF),
+            secondary: Color(0xFF9644FF),
+          ),
+        ),
         routerConfig: _router,
+        debugShowCheckedModeBanner: false,
       ),
     );
   }

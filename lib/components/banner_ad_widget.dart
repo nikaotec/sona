@@ -36,18 +36,9 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
           return const SizedBox.shrink();
         }
 
-        // Se o banner não está pronto, mostra um placeholder ou nada
+        // Se o banner não está pronto, não mostra nada
         if (!_bannerAdService.isBannerAdReady || _bannerAdService.bannerAd == null) {
-          return Container(
-            height: 50,
-            color: Colors.grey[200],
-            child: const Center(
-              child: Text(
-                'Carregando anúncio...',
-                style: TextStyle(color: Colors.grey),
-              ),
-            ),
-          );
+          return const SizedBox.shrink();
         }
 
         // Mostra o banner
@@ -61,4 +52,5 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
     );
   }
 }
+
 
