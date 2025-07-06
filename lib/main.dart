@@ -5,8 +5,10 @@ import 'package:provider/provider.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:sona/provider/audio_provider.dart';
 import 'package:sona/provider/paywall_provider.dart';
+import 'package:sona/provider/subscription_provider.dart';
 import 'package:sona/provider/user_data_provider.dart';
 import 'package:sona/screen/category_screen.dart';
+import 'package:sona/screen/category_music_list_screen.dart';
 import 'package:sona/service/ad_service.dart';
 import 'package:sona/service/banner_ad_service.dart';
 import 'package:sona/service/video_ad_service.dart';
@@ -45,8 +47,24 @@ class SonaApp extends StatelessWidget {
           builder: (_, __) => const CategoryScreen(),
         ),
         GoRoute(
+          path: '/category-music-list',
+          builder: (context, state) {
+            final extra = state.extra as Map<String, dynamic>?;
+            return CategoryMusicListScreen(
+              categoryName: extra?['categoryName'] ?? 'Categoria',
+              audios: extra?['audios'] ?? [],
+              heroTag: extra?['heroTag'],
+            );
+          },
+        ),
+        GoRoute(
           path: '/player',
-          builder: (_, __) => const PlayerScreen(),
+          builder: (context, state) {
+            final extra = state.extra as Map<String, dynamic>?;
+            return PlayerScreen(
+              heroTag: extra?['heroTag'],
+            );
+          },
         ),
         GoRoute(
           path: '/profile',
@@ -72,6 +90,7 @@ class SonaApp extends StatelessWidget {
         Provider<VideoAdService>(create: (_) => VideoAdService()),
         Provider<AudioDownloadService>(create: (_) => AudioDownloadService()),
         ChangeNotifierProvider(create: (_) => PaywallProvider()..loadData()),
+        ChangeNotifierProvider(create: (_) => SubscriptionProvider()),
         ChangeNotifierProvider(create: (_) => UserDataProvider()),
         ChangeNotifierProxyProvider<AdService, AudioProvider>(
           create: (context) => AudioProvider(),

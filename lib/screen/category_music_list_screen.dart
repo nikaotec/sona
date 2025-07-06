@@ -4,20 +4,24 @@ import 'package:sona/provider/audio_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sona/provider/paywall_provider.dart';
+import 'package:sona/provider/subscription_provider.dart';
 import 'package:sona/service/ad_service.dart';
 import 'package:sona/service/video_ad_service.dart';
 import 'package:sona/service/audio_download_service.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:sona/components/banner_ad_widget.dart';
+import 'package:sona/widgtes/subscription_banner.dart';
 
 class CategoryMusicListScreen extends StatefulWidget {
   final String categoryName;
   final List<AudioModel> audios;
+  final String? heroTag;
 
   const CategoryMusicListScreen({
     super.key,
     required this.categoryName,
     required this.audios,
+    this.heroTag,
   });
 
   @override
@@ -233,20 +237,59 @@ class _CategoryMusicListScreenState extends State<CategoryMusicListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final paywallProvider = Provider.of<PaywallProvider>(context);
-    
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.categoryName),
-        backgroundColor: const Color(0xFF1A1A2E),
-        foregroundColor: Colors.white,
-      ),
       backgroundColor: const Color(0xFF1A1A2E),
-      body: Column(
-        children: [
-          // Banner de anúncio no topo para usuários não premium
-          if (!paywallProvider.isPremium)
-            const BannerAdWidget(),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF1A1A2E),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => context.go('/categories'),
+        ),
+        title: widget.heroTag != null 
+          ? Hero(
+              tag: widget.heroTag!,
+              child: Material(
+                color: Colors.transparent,
+                child: Text(
+                  widget.categoryName,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            )
+          : Text(
+              widget.categoryName,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+        centerTitle: true,
+      ),
+      body: Consumer<SubscriptionProvider>(
+        builder: (context, subscriptionProvider, child) {
+          final paywallProvider = Provider.of<PaywallProvider>(context);
+          
+          return Column(
+            children: [
+              // Banner de assinatura para usuários não premium
+              if (!subscriptionProvider.hasActiveSubscription) ...[
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: CompactSubscriptionBanner(
+                    onTap: () => context.go('/paywall'),
+                  ),
+                ),
+              ],
+              
+              // Banner de anúncio no topo para usuários não premium
+              if (!paywallProvider.isPremium)
+                const BannerAdWidget(),
           
           // Lista de músicas
           Expanded(
@@ -257,7 +300,7 @@ class _CategoryMusicListScreenState extends State<CategoryMusicListScreen> {
                 // Para usuários premium, não mostrar anúncios
                 if (paywallProvider.isPremium) {
                   final audio = widget.audios[index];
-                  return _buildAudioTile(audio);
+                  return _buildAudioTile(audio, index);
                 }
 
                 // Para usuários não premium, intercalar anúncios
@@ -272,7 +315,7 @@ class _CategoryMusicListScreenState extends State<CategoryMusicListScreen> {
                   int audioIndex = _getAudioIndex(index);
                   if (audioIndex < widget.audios.length && audioIndex >= 0) {
                     final audio = widget.audios[audioIndex];
-                    return _buildAudioTile(audio);
+                    return _buildAudioTile(audio, audioIndex);
                   }
                 }
                 
@@ -281,6 +324,8 @@ class _CategoryMusicListScreenState extends State<CategoryMusicListScreen> {
             ),
           ),
         ],
+      );
+        },
       ),
     );
   }
@@ -302,88 +347,119 @@ class _CategoryMusicListScreenState extends State<CategoryMusicListScreen> {
     return listIndex - 2; // Músicas restantes
   }
 
-  Widget _buildAudioTile(AudioModel audio) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF2A2A3E),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(16),
-        title: Text(
-          audio.title,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
+  Widget _buildAudioTile(AudioModel audio, int index) {
+    return Hero(
+      tag: 'audio_${audio.id}_$index',
+      child: Material(
+        color: Colors.transparent,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF2A2A3E),
+            borderRadius: BorderRadius.circular(12),
           ),
-        ),
-        subtitle: Text(
-          audio.category,
-          style: const TextStyle(
-            color: Colors.grey,
-            fontSize: 14,
-          ),
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (audio.isPremium)
-              const Icon(Icons.lock, color: Colors.amber),
-            const SizedBox(width: 8),
-            IconButton(
-              icon: const Icon(Icons.download, color: Colors.white),
-              onPressed: () {
-                _handleDownload(context, audio);
-              },
-            ),
-          ],
-        ),
-        onTap: () async {
-          if (audio.isPremium) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('${audio.title} é um áudio premium. Assine para ouvir!'),
-                backgroundColor: Colors.amber,
+          child: ListTile(
+            contentPadding: const EdgeInsets.all(16),
+            leading: Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF6B73FF), Color(0xFF9644FF)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(8),
               ),
-            );
-            return;
-          }
-          
-          final paywallProvider = Provider.of<PaywallProvider>(context, listen: false);
-          await paywallProvider.loadData();
-          
-          if (!paywallProvider.isPremium) {
-            // Mostrar anúncio em vídeo para usuários não assinantes
-            if (_videoAdService.isRewardedInterstitialAdReady) {
-              _videoAdService.showVideoAd(
-                onUserEarnedRewardCallback: () {
-                },
-                onAdDismissed: () {
+              child: const Icon(
+                Icons.music_note,
+                color: Colors.white,
+                size: 24,
+              ),
+            ),
+            title: Text(
+              audio.title,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            subtitle: Text(
+              audio.category,
+              style: const TextStyle(
+                color: Colors.grey,
+                fontSize: 14,
+              ),
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (audio.isPremium)
+                  const Icon(Icons.lock, color: Colors.amber),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.download, color: Colors.white),
+                  onPressed: () {
+                    _handleDownload(context, audio);
+                  },
+                ),
+              ],
+            ),
+            onTap: () async {
+              if (audio.isPremium) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('${audio.title} é um áudio premium. Assine para ouvir!'),
+                    backgroundColor: Colors.amber,
+                  ),
+                );
+                return;
+              }
+              
+              final paywallProvider = Provider.of<PaywallProvider>(context, listen: false);
+              await paywallProvider.loadData();
+              
+              if (!paywallProvider.isPremium) {
+                // Mostrar anúncio em vídeo para usuários não assinantes
+                if (_videoAdService.isRewardedInterstitialAdReady) {
+                  _videoAdService.showVideoAd(
+                    onUserEarnedRewardCallback: () {
+                    },
+                    onAdDismissed: () {
+                      Provider.of<AudioProvider>(context, listen: false)
+                          .playAudio(context, audio);
+                      context.go('/player', extra: {
+                        'heroTag': 'audio_${audio.id}_$index',
+                      });
+                    },
+                    onAdFailedToLoadOrShow: (error) {
+                      Provider.of<AudioProvider>(context, listen: false)
+                          .playAudio(context, audio);
+                      context.go('/player', extra: {
+                        'heroTag': 'audio_${audio.id}_$index',
+                      });
+                    },
+                  );
+                } else {
+                  // Se o anúncio não está pronto, toca a música diretamente
                   Provider.of<AudioProvider>(context, listen: false)
                       .playAudio(context, audio);
-                  context.go('/player');
-                },
-                onAdFailedToLoadOrShow: (error) {
-                  Provider.of<AudioProvider>(context, listen: false)
-                      .playAudio(context, audio);
-                  context.go('/player');
-                },
-              );
-            } else {
-              // Se o anúncio não está pronto, toca a música diretamente
-              Provider.of<AudioProvider>(context, listen: false)
-                  .playAudio(context, audio);
-              context.go('/player');
-            }
-          } else {
-            // Usuário premium, navega diretamente
-            Provider.of<AudioProvider>(context, listen: false)
-                .playAudio(context, audio);
-            context.go('/player');
-          }
-        },
+                  context.go('/player', extra: {
+                    'heroTag': 'audio_${audio.id}_$index',
+                  });
+                }
+              } else {
+                // Usuário premium, navega diretamente
+                Provider.of<AudioProvider>(context, listen: false)
+                    .playAudio(context, audio);
+                context.go('/player', extra: {
+                  'heroTag': 'audio_${audio.id}_$index',
+                });
+              }
+            },
+          ),
+        ),
       ),
     );
   }
@@ -444,5 +520,4 @@ class _CategoryMusicListScreenState extends State<CategoryMusicListScreen> {
     }
   }
 }
-
 

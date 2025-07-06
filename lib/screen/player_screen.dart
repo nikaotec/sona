@@ -6,7 +6,9 @@ import 'package:sona/components/banner_ad_widget.dart';
 import 'package:sona/provider/paywall_provider.dart';
 
 class PlayerScreen extends StatefulWidget {
-  const PlayerScreen({super.key});
+  final String? heroTag;
+
+  const PlayerScreen({super.key, this.heroTag});
 
   @override
   State<PlayerScreen> createState() => _PlayerScreenState();
@@ -88,7 +90,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
               if (!paywallProvider.isPremium)
                 const BannerAdWidget(),
               
-              // Imagem principal (placeholder para pessoa meditando)
+              // Imagem principal com Hero animation
               Expanded(
                 flex: 3,
                 child: Container(
@@ -97,7 +99,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                     borderRadius: BorderRadius.circular(screenWidth * 0.05),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
+                        color: Colors.black.withValues(alpha: 0.3),
                         blurRadius: screenWidth * 0.05,
                         offset: Offset(0, screenWidth * 0.025),
                       ),
@@ -105,23 +107,44 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(screenWidth * 0.05),
-                    child: Container(
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            Color(0xFF6B73FF),
-                            Color(0xFF9644FF),
-                          ],
+                    child: widget.heroTag != null
+                      ? Hero(
+                          tag: widget.heroTag!,
+                          child: Container(
+                            decoration: const BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  Color(0xFF6B73FF),
+                                  Color(0xFF9644FF),
+                                ],
+                              ),
+                            ),
+                            child: Icon(
+                              Icons.self_improvement,
+                              size: screenWidth * 0.3,
+                              color: Colors.white,
+                            ),
+                          ),
+                        )
+                      : Container(
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                Color(0xFF6B73FF),
+                                Color(0xFF9644FF),
+                              ],
+                            ),
+                          ),
+                          child: Icon(
+                            Icons.self_improvement,
+                            size: screenWidth * 0.3,
+                            color: Colors.white,
+                          ),
                         ),
-                      ),
-                      child: Icon(
-                        Icons.self_improvement,
-                        size: screenWidth * 0.3,
-                        color: Colors.white,
-                      ),
-                    ),
                   ),
                 ),
               ),

@@ -43,6 +43,11 @@ android {
 
 dependencies {
 
+    val billing_version = "8.0.0"
+
+    implementation("com.android.billingclient:billing:$billing_version")
+
+
   // Import the Firebase BoM
 
   implementation(platform("com.google.firebase:firebase-bom:33.16.0"))
