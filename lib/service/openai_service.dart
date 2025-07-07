@@ -6,8 +6,8 @@ class OpenAIService {
   final Dio _dio = Dio();
 
   // IMPORTANTE: Substitua pela sua chave da API OpenAI
-  static const String _apiKey =
-      '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'; //'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';
+  static const String _apiKey = '';
+
   static const String _baseUrl = 'https://api.groq.com/openai/v1';
 
   OpenAIService() {
