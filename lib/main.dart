@@ -8,16 +8,17 @@ import 'package:sona/provider/paywall_provider.dart';
 import 'package:sona/provider/subscription_provider.dart';
 import 'package:sona/provider/video_ad_provider.dart';
 import 'package:sona/provider/user_data_provider.dart';
-import 'package:sona/screen/category_screen.dart';
+import 'package:sona/provider/onboarding_provider.dart';
 import 'package:sona/screen/category_music_list_screen.dart';
+import 'package:sona/screen/category_screen.dart';// Versão animada
+import 'package:sona/screen/onboarding_screen.dart';
+import 'package:sona/screen/player_screen.dart';
 import 'package:sona/service/ad_service.dart';
 import 'package:sona/service/banner_ad_service.dart';
 import 'package:sona/service/video_ad_service.dart';
 import 'package:sona/service/audio_download_service.dart';
-import 'package:sona/screen/login_screen.dart';
-import 'package:sona/screen/onbloarding_screen.dart';
-import 'package:sona/screen/paywall_screen.dart';
-import 'package:sona/screen/player_screen.dart';
+import 'package:sona/screen/login_screen.dart';// Versão animada
+import 'package:sona/screen/paywall_screen.dart';// Versão animada
 import 'package:sona/screen/profile_screen.dart';
 
 void main() async {
@@ -37,7 +38,7 @@ class SonaApp extends StatelessWidget {
       routes: [
         GoRoute(
           path: '/',
-          builder: (_, __) => const OnboardingScreen(),
+          builder: (_, __) => const OnboardingScreen(), // Versão animada
         ),
         GoRoute(
           path: '/login',
@@ -51,7 +52,7 @@ class SonaApp extends StatelessWidget {
           path: '/category-music-list',
           builder: (context, state) {
             final extra = state.extra as Map<String, dynamic>?;
-            return CategoryMusicListScreen(
+            return CategoryMusicListScreen( // Versão animada
               categoryName: extra?['categoryName'] ?? 'Categoria',
               audios: extra?['audios'] ?? [],
               heroTag: extra?['heroTag'],
@@ -62,7 +63,7 @@ class SonaApp extends StatelessWidget {
           path: '/player',
           builder: (context, state) {
             final extra = state.extra as Map<String, dynamic>?;
-            return PlayerScreen(
+            return PlayerScreen( // Versão animada
               heroTag: extra?['heroTag'],
             );
           },
@@ -91,6 +92,7 @@ class SonaApp extends StatelessWidget {
         Provider<VideoAdService>(create: (_) => VideoAdService()),
         Provider<AudioDownloadService>(create: (_) => AudioDownloadService()),
         ChangeNotifierProvider(create: (_) => SubscriptionProvider()),
+        ChangeNotifierProvider(create: (_) => OnboardingProvider()),
         ChangeNotifierProxyProvider<SubscriptionProvider, VideoAdProvider>(
           create: (context) => VideoAdProvider(Provider.of<SubscriptionProvider>(context, listen: false)),
           update: (context, subscriptionProvider, videoAdProvider) {
@@ -124,6 +126,13 @@ class SonaApp extends StatelessWidget {
             primary: Color(0xFF6B73FF),
             secondary: Color(0xFF9644FF),
           ),
+          // Configurações de transição de página
+          pageTransitionsTheme: const PageTransitionsTheme(
+            builders: {
+              TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+              TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+            },
+          ),
         ),
         routerConfig: _router,
         debugShowCheckedModeBanner: false,
@@ -131,4 +140,3 @@ class SonaApp extends StatelessWidget {
     );
   }
 }
-

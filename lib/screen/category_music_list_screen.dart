@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:sona/model/audio_model.dart';
 import 'package:sona/provider/audio_provider.dart';
 import 'package:provider/provider.dart';
@@ -29,13 +30,16 @@ class CategoryMusicListScreen extends StatefulWidget {
   State<CategoryMusicListScreen> createState() => _CategoryMusicListScreenState();
 }
 
-class _CategoryMusicListScreenState extends State<CategoryMusicListScreen> {
+class _CategoryMusicListScreenState extends State<CategoryMusicListScreen>  with TickerProviderStateMixin {
   BannerAd? _bannerAd;
   InterstitialAd? _interstitialAd;
   late VideoAdService _videoAdService;
   bool _isBannerAdReady = false;
   bool _isInterstitialAdReady = false;
   int _musicPlayCount = 0;
+  
+  late AnimationController _listAnimationController;
+  late AnimationController _headerAnimationController;
 
   @override
   void initState() {
@@ -44,6 +48,32 @@ class _CategoryMusicListScreenState extends State<CategoryMusicListScreen> {
     _loadInterstitialAd();
     _videoAdService = VideoAdService();
     _videoAdService.loadRewardedInterstitialAd();
+    
+    // Inicializar controladores de animação
+    _listAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 1200),
+      vsync: this,
+    );
+    _headerAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    
+    // Iniciar animações
+    _headerAnimationController.forward();
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) _listAnimationController.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _bannerAd?.dispose();
+    _interstitialAd?.dispose();
+    _videoAdService.dispose();
+    _listAnimationController.dispose();
+    _headerAnimationController.dispose();
+    super.dispose();
   }
 
   void _loadBannerAd() {
@@ -79,11 +109,11 @@ class _CategoryMusicListScreenState extends State<CategoryMusicListScreen> {
           _interstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
             onAdDismissedFullScreenContent: (InterstitialAd ad) {
               ad.dispose();
-              _loadInterstitialAd(); // Carrega um novo anúncio
+              _loadInterstitialAd();
             },
             onAdFailedToShowFullScreenContent: (InterstitialAd ad, AdError error) {
               ad.dispose();
-              _loadInterstitialAd(); // Carrega um novo anúncio
+              _loadInterstitialAd();
             },
           );
         },
@@ -98,14 +128,6 @@ class _CategoryMusicListScreenState extends State<CategoryMusicListScreen> {
       _interstitialAd!.show();
       _isInterstitialAdReady = false;
     }
-  }
-
-  @override
-  void dispose() {
-    _bannerAd?.dispose();
-    _interstitialAd?.dispose();
-    _videoAdService.dispose();
-    super.dispose();
   }
 
   Widget _buildBannerAd() {
@@ -144,7 +166,7 @@ class _CategoryMusicListScreenState extends State<CategoryMusicListScreen> {
             ),
           ],
         ),
-      );
+      ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.3, end: 0);
     }
     return const SizedBox.shrink();
   }
@@ -157,6 +179,13 @@ class _CategoryMusicListScreenState extends State<CategoryMusicListScreen> {
         color: const Color(0xFF2A2A3E),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey.withOpacity(0.3), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF6C63FF).withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -182,7 +211,9 @@ class _CategoryMusicListScreenState extends State<CategoryMusicListScreen> {
                 width: 60,
                 height: 60,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF4A4A8A),
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF6C63FF), Color(0xFF9644FF)],
+                  ),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(Icons.headphones, color: Colors.white, size: 30),
@@ -216,24 +247,22 @@ class _CategoryMusicListScreenState extends State<CategoryMusicListScreen> {
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
-            child: ElevatedButton(
+            child: AnimatedButton(
               onPressed: () {
-                // Navegar para paywall ou ação do anúncio
                 context.go('/paywall');
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF4A4A8A),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+              child: const Text(
+                'Assinar Premium',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-              child: const Text('Assinar Premium'),
             ),
           ),
         ],
       ),
-    );
+    ).animate().fadeIn(delay: 300.ms).slideX(begin: 0.3, end: 0);
   }
 
   @override
@@ -243,9 +272,17 @@ class _CategoryMusicListScreenState extends State<CategoryMusicListScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF1A1A2E),
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => context.go('/categories'),
+        leading: AnimatedBuilder(
+          animation: _headerAnimationController,
+          builder: (context, child) {
+            return Transform.scale(
+              scale: _headerAnimationController.value,
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () => context.go('/categories'),
+              ),
+            );
+          },
         ),
         title: widget.heroTag != null 
           ? Hero(
@@ -262,13 +299,24 @@ class _CategoryMusicListScreenState extends State<CategoryMusicListScreen> {
                 ),
               ),
             )
-          : Text(
-              widget.categoryName,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-              ),
+          : AnimatedBuilder(
+              animation: _headerAnimationController,
+              builder: (context, child) {
+                return Transform.translate(
+                  offset: Offset(0, 20 * (1 - _headerAnimationController.value)),
+                  child: Opacity(
+                    opacity: _headerAnimationController.value,
+                    child: Text(
+                      widget.categoryName,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
         centerTitle: true,
       ),
@@ -284,7 +332,7 @@ class _CategoryMusicListScreenState extends State<CategoryMusicListScreen> {
                   padding: const EdgeInsets.all(16.0),
                   child: CompactSubscriptionBanner(
                     onTap: () => context.go('/paywall'),
-                  ),
+                  ).animate().fadeIn(delay: 200.ms).slideY(begin: -0.3, end: 0),
                 ),
               ],
               
@@ -292,47 +340,49 @@ class _CategoryMusicListScreenState extends State<CategoryMusicListScreen> {
               if (!paywallProvider.isPremium)
                 const BannerAdWidget(),
           
-          // Lista de músicas
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: _calculateItemCount(paywallProvider.isPremium),
-              itemBuilder: (context, index) {
-                // Para usuários premium, não mostrar anúncios
-                if (paywallProvider.isPremium) {
-                  final audio = widget.audios[index];
-                  return _buildAudioTile(audio, index);
-                }
+              // Lista de músicas
+              Expanded(
+                child: AnimatedBuilder(
+                  animation: _listAnimationController,
+                  builder: (context, child) {
+                    return ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: _calculateItemCount(paywallProvider.isPremium),
+                      itemBuilder: (context, index) {
+                        // Para usuários premium, não mostrar anúncios
+                        if (paywallProvider.isPremium) {
+                          final audio = widget.audios[index];
+                          return _buildAnimatedAudioTile(audio, index);
+                        }
 
-                // Para usuários não premium, intercalar anúncios
-                if (index == 3) {
-                  // Anúncio nativo após 3 músicas
-                  return _buildNativeAdCard();
-                } else if (index == 7) {
-                  // Segundo banner após mais algumas músicas
-                  return _buildBannerAd();
-                } else {
-                  // Calcular o índice real do áudio
-                  int audioIndex = _getAudioIndex(index);
-                  if (audioIndex < widget.audios.length && audioIndex >= 0) {
-                    final audio = widget.audios[audioIndex];
-                    return _buildAudioTile(audio, audioIndex);
-                  }
-                }
-                
-                return const SizedBox.shrink();
-              },
-            ),
-          ),
-        ],
-      );
+                        // Para usuários não premium, intercalar anúncios
+                        if (index == 3) {
+                          return _buildNativeAdCard();
+                        } else if (index == 7) {
+                          return _buildBannerAd();
+                        } else {
+                          int audioIndex = _getAudioIndex(index);
+                          if (audioIndex < widget.audios.length && audioIndex >= 0) {
+                            final audio = widget.audios[audioIndex];
+                            return _buildAnimatedAudioTile(audio, audioIndex);
+                          }
+                        }
+                        
+                        return const SizedBox.shrink();
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          );
         },
       ),
       // Mini Player flutuante
       bottomSheet: const MiniPlayerWidget(
         showOnlyWhenPlaying: true,
         margin: EdgeInsets.all(16),
-      ),
+      ).animate().slideY(begin: 1, end: 0, delay: 1000.ms),
     );
   }
 
@@ -340,134 +390,82 @@ class _CategoryMusicListScreenState extends State<CategoryMusicListScreen> {
     if (isPremium) {
       return widget.audios.length;
     }
-    // Para não premium: músicas + anúncios intercalados
-    return widget.audios.length + 2; // +2 para os anúncios
+    return widget.audios.length + 2;
   }
 
   int _getAudioIndex(int listIndex) {
-    // Mapear o índice da lista para o índice real do áudio
-    if (listIndex <= 2) return listIndex; // Primeiras 3 músicas
-    if (listIndex == 3) return -1; // Anúncio nativo
-    if (listIndex <= 6) return listIndex - 1; // Próximas músicas
-    if (listIndex == 7) return -1; // Segundo banner
-    return listIndex - 2; // Músicas restantes
+    if (listIndex <= 2) return listIndex;
+    if (listIndex == 3) return -1;
+    if (listIndex <= 6) return listIndex - 1;
+    if (listIndex == 7) return -1;
+    return listIndex - 2;
   }
 
-  Widget _buildAudioTile(AudioModel audio, int index) {
+  Widget _buildAnimatedAudioTile(AudioModel audio, int index) {
+    final delay = (index * 100).ms;
+    
     return Hero(
       tag: 'audio_${audio.id}_$index',
       child: Material(
         color: Colors.transparent,
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          decoration: BoxDecoration(
-            color: const Color(0xFF2A2A3E),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: ListTile(
-            contentPadding: const EdgeInsets.all(16),
-            leading: Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF6B73FF), Color(0xFF9644FF)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(
-                Icons.music_note,
-                color: Colors.white,
-                size: 24,
-              ),
-            ),
-            title: Text(
-              audio.title,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            subtitle: Text(
-              audio.category,
-              style: const TextStyle(
-                color: Colors.grey,
-                fontSize: 14,
-              ),
-            ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (audio.isPremium)
-                  const Icon(Icons.lock, color: Colors.amber),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.download, color: Colors.white),
-                  onPressed: () {
-                    _handleDownload(context, audio);
-                  },
-                ),
-              ],
-            ),
-            onTap: () async {
-              if (audio.isPremium) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('${audio.title} é um áudio premium. Assine para ouvir!'),
-                    backgroundColor: Colors.amber,
-                  ),
-                );
-                return;
-              }
-              
-              final paywallProvider = Provider.of<PaywallProvider>(context, listen: false);
-              await paywallProvider.loadData();
-              
-              if (!paywallProvider.isPremium) {
-                // Mostrar anúncio em vídeo para usuários não assinantes
-                if (_videoAdService.isRewardedInterstitialAdReady) {
-                  _videoAdService.showVideoAd(
-                    onUserEarnedRewardCallback: () {
-                    },
-                    onAdDismissed: () {
-                      Provider.of<AudioProvider>(context, listen: false)
-                          .playAudio(context, audio);
-                      context.go('/player', extra: {
-                        'heroTag': 'audio_${audio.id}_$index',
-                      });
-                    },
-                    onAdFailedToLoadOrShow: (error) {
-                      Provider.of<AudioProvider>(context, listen: false)
-                          .playAudio(context, audio);
-                      context.go('/player', extra: {
-                        'heroTag': 'audio_${audio.id}_$index',
-                      });
-                    },
-                  );
-                } else {
-                  // Se o anúncio não está pronto, toca a música diretamente
-                  Provider.of<AudioProvider>(context, listen: false)
-                      .playAudio(context, audio);
-                  context.go('/player', extra: {
-                    'heroTag': 'audio_${audio.id}_$index',
-                  });
-                }
-              } else {
-                // Usuário premium, navega diretamente
-                Provider.of<AudioProvider>(context, listen: false)
-                    .playAudio(context, audio);
-                context.go('/player', extra: {
-                  'heroTag': 'audio_${audio.id}_$index',
-                });
-              }
-            },
-          ),
+        child: AnimatedMusicCard(
+          audio: audio,
+          index: index,
+          delay: delay,
+          onTap: () => _handleAudioTap(audio, index),
+          onDownload: () => _handleDownload(context, audio),
         ),
       ),
     );
+  }
+
+  void _handleAudioTap(AudioModel audio, int index) async {
+    if (audio.isPremium) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${audio.title} é um áudio premium. Assine para ouvir!'),
+          backgroundColor: Colors.amber,
+        ),
+      );
+      return;
+    }
+    
+    final paywallProvider = Provider.of<PaywallProvider>(context, listen: false);
+    await paywallProvider.loadData();
+    
+    if (!paywallProvider.isPremium) {
+      if (_videoAdService.isRewardedInterstitialAdReady) {
+        _videoAdService.showVideoAd(
+          onUserEarnedRewardCallback: () {},
+          onAdDismissed: () {
+            Provider.of<AudioProvider>(context, listen: false)
+                .playAudio(context, audio);
+            context.go('/player', extra: {
+              'heroTag': 'audio_${audio.id}_$index',
+            });
+          },
+          onAdFailedToLoadOrShow: (error) {
+            Provider.of<AudioProvider>(context, listen: false)
+                .playAudio(context, audio);
+            context.go('/player', extra: {
+              'heroTag': 'audio_${audio.id}_$index',
+            });
+          },
+        );
+      } else {
+        Provider.of<AudioProvider>(context, listen: false)
+            .playAudio(context, audio);
+        context.go('/player', extra: {
+          'heroTag': 'audio_${audio.id}_$index',
+        });
+      }
+    } else {
+      Provider.of<AudioProvider>(context, listen: false)
+          .playAudio(context, audio);
+      context.go('/player', extra: {
+        'heroTag': 'audio_${audio.id}_$index',
+      });
+    }
   }
 
   void _handleDownload(BuildContext context, AudioModel audio) async {
@@ -496,8 +494,7 @@ class _CategoryMusicListScreenState extends State<CategoryMusicListScreen> {
 
     if (!paywallProvider.isPremium) {
       adService.showRewardedAd(
-        onUserEarnedRewardCallback: () {
-        },
+        onUserEarnedRewardCallback: () {},
         onAdDismissed: () {
           _performDownload(context, audioDownloadService, audio.url, fileName);
         },
@@ -527,3 +524,254 @@ class _CategoryMusicListScreenState extends State<CategoryMusicListScreen> {
   }
 }
 
+// Widget personalizado para cards de música animados
+class AnimatedMusicCard extends StatefulWidget {
+  final AudioModel audio;
+  final int index;
+  final Duration delay;
+  final VoidCallback onTap;
+  final VoidCallback onDownload;
+
+  const AnimatedMusicCard({
+    super.key,
+    required this.audio,
+    required this.index,
+    required this.delay,
+    required this.onTap,
+    required this.onDownload,
+  });
+
+  @override
+  State<AnimatedMusicCard> createState() => _AnimatedMusicCardState();
+}
+
+class _AnimatedMusicCardState extends State<AnimatedMusicCard>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+  late Animation<Color?> _colorAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 200),
+      vsync: this,
+    );
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.98,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOut,
+    ));
+    _colorAnimation = ColorTween(
+      begin: const Color(0xFF2A2A3E),
+      end: const Color(0xFF6C63FF).withOpacity(0.1),
+    ).animate(_controller);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => _controller.forward(),
+      onTapUp: (_) {
+        _controller.reverse();
+        widget.onTap();
+      },
+      onTapCancel: () => _controller.reverse(),
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) {
+          return Transform.scale(
+            scale: _scaleAnimation.value,
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: _colorAnimation.value,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF6C63FF).withOpacity(0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: ListTile(
+                contentPadding: const EdgeInsets.all(16),
+                leading: Hero(
+                  tag: 'audio_icon_${widget.audio.id}_${widget.index}',
+                  child: Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF6B73FF), Color(0xFF9644FF)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.music_note,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                ),
+                title: Text(
+                  widget.audio.title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                subtitle: Text(
+                  widget.audio.category,
+                  style: const TextStyle(
+                    color: Colors.grey,
+                    fontSize: 14,
+                  ),
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (widget.audio.isPremium)
+                      const Icon(Icons.lock, color: Colors.amber)
+                          .animate(onPlay: (controller) => controller.repeat())
+                          .shimmer(duration: 2000.ms, color: Colors.amber),
+                    const SizedBox(width: 8),
+                    AnimatedButton(
+                      onPressed: widget.onDownload,
+                      isIconButton: true,
+                      child: const Icon(Icons.download, color: Colors.white),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    ).animate(delay: widget.delay).fadeIn().slideX(begin: 0.3, end: 0);
+  }
+}
+
+// Widget personalizado para botões animados (reutilizado do onboarding)
+class AnimatedButton extends StatefulWidget {
+  final VoidCallback? onPressed;
+  final Widget child;
+  final bool isIconButton;
+
+  const AnimatedButton({
+    super.key,
+    required this.onPressed,
+    required this.child,
+    this.isIconButton = false,
+  });
+
+  @override
+  State<AnimatedButton> createState() => _AnimatedButtonState();
+}
+
+class _AnimatedButtonState extends State<AnimatedButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 150),
+      vsync: this,
+    );
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.95,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOut,
+    ));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.isIconButton) {
+      return GestureDetector(
+        onTapDown: (_) => _controller.forward(),
+        onTapUp: (_) => _controller.reverse(),
+        onTapCancel: () => _controller.reverse(),
+        onTap: widget.onPressed,
+        child: AnimatedBuilder(
+          animation: _scaleAnimation,
+          builder: (context, child) {
+            return Transform.scale(
+              scale: _scaleAnimation.value,
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2A2A3E),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: const Color(0xFF6C63FF).withOpacity(0.3),
+                  ),
+                ),
+                child: widget.child,
+              ),
+            );
+          },
+        ),
+      );
+    }
+
+    return GestureDetector(
+      onTapDown: (_) => _controller.forward(),
+      onTapUp: (_) => _controller.reverse(),
+      onTapCancel: () => _controller.reverse(),
+      onTap: widget.onPressed,
+      child: AnimatedBuilder(
+        animation: _scaleAnimation,
+        builder: (context, child) {
+          return Transform.scale(
+            scale: _scaleAnimation.value,
+            child: Container(
+              width: double.infinity,
+              height: 48,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF6C63FF), Color(0xFF9644FF)],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                ),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF6C63FF).withOpacity(0.3),
+                    blurRadius: 15,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Center(child: widget.child),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
