@@ -352,7 +352,7 @@ class _CategoryMusicListScreenState extends State<CategoryMusicListScreen>  with
                         // Para usuários premium, não mostrar anúncios
                         if (paywallProvider.isPremium) {
                           final audio = widget.audios[index];
-                          return _buildAnimatedAudioTile(audio, index);
+                          return _buildFixedAnimatedAudioTile(audio, index);
                         }
 
                         // Para usuários não premium, intercalar anúncios
@@ -364,7 +364,7 @@ class _CategoryMusicListScreenState extends State<CategoryMusicListScreen>  with
                           int audioIndex = _getAudioIndex(index);
                           if (audioIndex < widget.audios.length && audioIndex >= 0) {
                             final audio = widget.audios[audioIndex];
-                            return _buildAnimatedAudioTile(audio, audioIndex);
+                            return _buildFixedAnimatedAudioTile(audio, audioIndex);
                           }
                         }
                         
@@ -401,14 +401,15 @@ class _CategoryMusicListScreenState extends State<CategoryMusicListScreen>  with
     return listIndex - 2;
   }
 
-  Widget _buildAnimatedAudioTile(AudioModel audio, int index) {
+  // Versão corrigida sem Hero aninhado
+  Widget _buildFixedAnimatedAudioTile(AudioModel audio, int index) {
     final delay = (index * 100).ms;
     
     return Hero(
       tag: 'audio_${audio.id}_$index',
       child: Material(
         color: Colors.transparent,
-        child: AnimatedMusicCard(
+        child: FixedAnimatedMusicCard(
           audio: audio,
           index: index,
           delay: delay,
@@ -524,15 +525,15 @@ class _CategoryMusicListScreenState extends State<CategoryMusicListScreen>  with
   }
 }
 
-// Widget personalizado para cards de música animados
-class AnimatedMusicCard extends StatefulWidget {
+// Widget corrigido sem Hero aninhado
+class FixedAnimatedMusicCard extends StatefulWidget {
   final AudioModel audio;
   final int index;
   final Duration delay;
   final VoidCallback onTap;
   final VoidCallback onDownload;
 
-  const AnimatedMusicCard({
+  const FixedAnimatedMusicCard({
     super.key,
     required this.audio,
     required this.index,
@@ -542,10 +543,10 @@ class AnimatedMusicCard extends StatefulWidget {
   });
 
   @override
-  State<AnimatedMusicCard> createState() => _AnimatedMusicCardState();
+  State<FixedAnimatedMusicCard> createState() => _FixedAnimatedMusicCardState();
 }
 
-class _AnimatedMusicCardState extends State<AnimatedMusicCard>
+class _FixedAnimatedMusicCardState extends State<FixedAnimatedMusicCard>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
@@ -606,24 +607,22 @@ class _AnimatedMusicCardState extends State<AnimatedMusicCard>
               ),
               child: ListTile(
                 contentPadding: const EdgeInsets.all(16),
-                leading: Hero(
-                  tag: 'audio_icon_${widget.audio.id}_${widget.index}',
-                  child: Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF6B73FF), Color(0xFF9644FF)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(8),
+                // Removido o Hero aninhado - apenas o ícone simples
+                leading: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF6B73FF), Color(0xFF9644FF)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                    child: const Icon(
-                      Icons.music_note,
-                      color: Colors.white,
-                      size: 24,
-                    ),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.music_note,
+                    color: Colors.white,
+                    size: 24,
                   ),
                 ),
                 title: Text(
@@ -665,7 +664,7 @@ class _AnimatedMusicCardState extends State<AnimatedMusicCard>
   }
 }
 
-// Widget personalizado para botões animados (reutilizado do onboarding)
+// Widget personalizado para botões animados (reutilizado)
 class AnimatedButton extends StatefulWidget {
   final VoidCallback? onPressed;
   final Widget child;

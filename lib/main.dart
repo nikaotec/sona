@@ -10,15 +10,15 @@ import 'package:sona/provider/video_ad_provider.dart';
 import 'package:sona/provider/user_data_provider.dart';
 import 'package:sona/provider/onboarding_provider.dart';
 import 'package:sona/screen/category_music_list_screen.dart';
-import 'package:sona/screen/category_screen.dart';// Versão animada
+import 'package:sona/screen/category_screen.dart';
 import 'package:sona/screen/onboarding_screen.dart';
 import 'package:sona/screen/player_screen.dart';
 import 'package:sona/service/ad_service.dart';
 import 'package:sona/service/banner_ad_service.dart';
 import 'package:sona/service/video_ad_service.dart';
 import 'package:sona/service/audio_download_service.dart';
-import 'package:sona/screen/login_screen.dart';// Versão animada
-import 'package:sona/screen/paywall_screen.dart';// Versão animada
+import 'package:sona/screen/login_screen.dart';
+import 'package:sona/screen/paywall_screen.dart';
 import 'package:sona/screen/profile_screen.dart';
 
 void main() async {
@@ -52,7 +52,7 @@ class SonaApp extends StatelessWidget {
           path: '/category-music-list',
           builder: (context, state) {
             final extra = state.extra as Map<String, dynamic>?;
-            return CategoryMusicListScreen( // Versão animada
+            return CategoryMusicListScreen( // Versão corrigida
               categoryName: extra?['categoryName'] ?? 'Categoria',
               audios: extra?['audios'] ?? [],
               heroTag: extra?['heroTag'],
@@ -63,7 +63,7 @@ class SonaApp extends StatelessWidget {
           path: '/player',
           builder: (context, state) {
             final extra = state.extra as Map<String, dynamic>?;
-            return PlayerScreen( // Versão animada
+            return PlayerScreen( // Versão corrigida
               heroTag: extra?['heroTag'],
             );
           },

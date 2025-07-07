@@ -4,10 +4,11 @@ import '../model/onboarding_model.dart';
 
 class OpenAIService {
   final Dio _dio = Dio();
-  
+
   // IMPORTANTE: Substitua pela sua chave da API OpenAI
-  static const String _apiKey = 'SUA_CHAVE_OPENAI_AQUI';
-  static const String _baseUrl = 'https://api.openai.com/v1';
+  static const String _apiKey =
+      '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'; //'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';
+  static const String _baseUrl = 'https://api.groq.com/openai/v1';
 
   OpenAIService() {
     _dio.options.headers = {
@@ -19,20 +20,18 @@ class OpenAIService {
   Future<String> generateRecommendation(OnboardingData data) async {
     try {
       final prompt = _buildPrompt(data);
-      
+
       final response = await _dio.post(
         '$_baseUrl/chat/completions',
         data: {
-          'model': 'gpt-3.5-turbo',
+          'model': 'llama-3.3-70b-versatile',
           'messages': [
             {
               'role': 'system',
-              'content': 'Você é um terapeuta digital especializado em recomendações personalizadas de trilhas sonoras e técnicas de relaxamento. Suas respostas devem ser empáticas, acolhedoras e personalizadas.'
+              'content':
+                  'Você é um terapeuta digital especializado em recomendações personalizadas de trilhas sonoras e técnicas de relaxamento. Suas respostas devem ser empáticas, acolhedoras e personalizadas.',
             },
-            {
-              'role': 'user',
-              'content': prompt,
-            }
+            {'role': 'user', 'content': prompt},
           ],
           'max_tokens': 200,
           'temperature': 0.7,
@@ -50,7 +49,9 @@ class OpenAIService {
         if (e.response?.statusCode == 401) {
           throw Exception('Chave da API inválida. Verifique sua configuração.');
         } else if (e.response?.statusCode == 429) {
-          throw Exception('Limite de requisições excedido. Tente novamente em alguns minutos.');
+          throw Exception(
+            'Limite de requisições excedido. Tente novamente em alguns minutos.',
+          );
         }
       }
       throw Exception('Erro ao conectar com a IA: $e');
@@ -149,4 +150,3 @@ Fale com proximidade, como se fosse um guia emocional. Use "você" e seja acolhe
     }
   }
 }
-
