@@ -7,7 +7,6 @@ class OpenAIService {
 
   // IMPORTANTE: Substitua pela sua chave da API OpenAI
   static const String _apiKey = '';
-
   static const String _baseUrl = 'https://api.groq.com/openai/v1';
 
   OpenAIService() {
