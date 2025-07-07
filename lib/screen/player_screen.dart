@@ -15,7 +15,7 @@ class PlayerScreen extends StatefulWidget {
   State<PlayerScreen> createState() => _PlayerScreenState();
 }
 
-class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMixin {
+class _PlayerScreenState extends State<PlayerScreen>  with TickerProviderStateMixin {
   late AnimationController _rotationController;
   late AnimationController _pulseController;
   late AnimationController _slideController;
@@ -227,7 +227,10 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
         child: widget.heroTag != null
           ? Hero(
               tag: widget.heroTag!,
-              child: _buildRotatingIcon(screenWidth),
+              child: Material(
+                color: Colors.transparent,
+                child: _buildRotatingIcon(screenWidth),
+              ),
             )
           : _buildRotatingIcon(screenWidth),
       ),
