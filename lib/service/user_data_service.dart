@@ -4,7 +4,10 @@ import 'package:sona/model/audio_model.dart';
 
 class UserDataService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final String uid = FirebaseAuth.instance.currentUser!.uid;
+   final String uid;
+
+   UserDataService(this.uid);
+
 
   Future<void> addToFavorites(AudioModel audio) async {
     await _firestore.collection('users/$uid/favorites').doc(audio.id).set(audio.toMap());

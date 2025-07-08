@@ -4,6 +4,8 @@ class OnboardingData {
   final String estilo;
   final String horario;
   final String? recomendacaoIA;
+  final String? aiResponse;
+  final DateTime? completedAt;
 
   OnboardingData({
     required this.objetivo,
@@ -11,6 +13,8 @@ class OnboardingData {
     required this.estilo,
     required this.horario,
     this.recomendacaoIA,
+    this.aiResponse,
+    this.completedAt,
   });
 
   Map<String, dynamic> toJson() {
@@ -20,6 +24,9 @@ class OnboardingData {
       'estilo': estilo,
       'horario': horario,
       'recomendacaoIA': recomendacaoIA,
+      'aiResponse': aiResponse,
+      'completedAt': completedAt?.toIso8601String(),
+     
     };
   }
 
@@ -30,6 +37,8 @@ class OnboardingData {
       estilo: json['estilo'],
       horario: json['horario'],
       recomendacaoIA: json['recomendacaoIA'],
+       aiResponse: json['aiResponse'],
+      completedAt: json['completedAt'] != null ? DateTime.parse(json['completedAt']) : null,
     );
   }
 
@@ -39,6 +48,8 @@ class OnboardingData {
     String? estilo,
     String? horario,
     String? recomendacaoIA,
+    String? aiResponse,
+    DateTime? completedAt,
   }) {
     return OnboardingData(
       objetivo: objetivo ?? this.objetivo,
@@ -46,6 +57,8 @@ class OnboardingData {
       estilo: estilo ?? this.estilo,
       horario: horario ?? this.horario,
       recomendacaoIA: recomendacaoIA ?? this.recomendacaoIA,
+      aiResponse: aiResponse ?? this.aiResponse,
+      completedAt: completedAt ?? this.completedAt,
     );
   }
 }

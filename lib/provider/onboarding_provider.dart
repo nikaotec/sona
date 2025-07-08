@@ -15,6 +15,12 @@ class OnboardingProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
+   // Adicionando getters para as propriedades do onboarding
+  String get objetivo => _onboardingData?.objetivo ?? '';
+  String get humor => _onboardingData?.humor ?? '';
+  String get estilo => _onboardingData?.estilo ?? '';
+  String get horario => _onboardingData?.horario ?? '';
+
   final OpenAIService _openAIService = OpenAIService();
 
   void setObjetivo(String objetivo) {

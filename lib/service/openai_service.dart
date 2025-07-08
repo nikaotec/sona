@@ -98,6 +98,23 @@ Fale com proximidade, como se fosse um guia emocional. Use "você" e seja acolhe
     }
   }
 
+  // Novo método para ser chamado pelo onboarding
+  Future<String> generatePersonalizedRecommendation({
+    required String objetivo,
+    required String humor,
+    required String estilo,
+    required String horario,
+  }) async {
+    final onboardingData = OnboardingData(
+      objetivo: objetivo,
+      humor: humor,
+      estilo: estilo,
+      horario: horario,
+    );
+    return generateRecommendation(onboardingData);
+  }
+
+
   String _getHumorTexto(String humor) {
     switch (humor) {
       case 'calmo':

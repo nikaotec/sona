@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:sona/provider/user_data_provider.dart';
 import 'package:sona/screen/onboarding_screen.dart';
 import 'package:sona/service/auth_service.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
-class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+class EnhancedProfileScreen extends StatefulWidget {
+  const EnhancedProfileScreen({super.key});
 
   @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
+  State<EnhancedProfileScreen> createState() => _EnhancedProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
- @override
+class _EnhancedProfileScreenState extends State<EnhancedProfileScreen> {
+  @override
   void initState() {
     super.initState();
     // Carregar dados do usuário ao inicializar
@@ -685,3 +685,4 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 }
+

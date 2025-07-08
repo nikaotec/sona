@@ -21,7 +21,7 @@ import 'package:sona/screen/login_screen.dart';
 import 'package:sona/screen/paywall_screen.dart';
 import 'package:sona/screen/profile_screen.dart';
 
-void main() async {
+ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   MobileAds.instance.initialize(); // Inicializa o AdMob
