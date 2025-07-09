@@ -1,5 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
@@ -13,6 +14,7 @@ import 'package:sona/screen/category_music_list_screen.dart';
 import 'package:sona/screen/category_screen.dart';
 import 'package:sona/screen/onboarding_screen.dart';
 import 'package:sona/screen/player_screen.dart';
+import 'package:sona/screen/splash)screen.dart';
 import 'package:sona/service/ad_service.dart';
 import 'package:sona/service/banner_ad_service.dart';
 import 'package:sona/service/video_ad_service.dart';
@@ -21,11 +23,14 @@ import 'package:sona/screen/login_screen.dart';
 import 'package:sona/screen/paywall_screen.dart';
 import 'package:sona/screen/profile_screen.dart';
 
+
  void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
   await Firebase.initializeApp();
   MobileAds.instance.initialize(); // Inicializa o AdMob
   runApp(const SonaApp());
+   FlutterNativeSplash.remove();
 }
 
 class SonaApp extends StatelessWidget {
@@ -38,7 +43,11 @@ class SonaApp extends StatelessWidget {
       routes: [
         GoRoute(
           path: '/',
-          builder: (_, __) => const OnboardingScreen(), // Versão animada
+          builder: (_, __) => const SplashScreen(),
+        ),
+        GoRoute(
+          path: '/onboarding',
+          builder: (_, __) => const OnboardingScreen(),
         ),
         GoRoute(
           path: '/login',

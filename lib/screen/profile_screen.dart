@@ -554,19 +554,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _startOnboarding() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const OnboardingScreen(isEditMode: false),
-      ),
-    );
+    context.go( '/onboarding', extra: {'isEditMode': false});
+    // Navigator.of(context).push(
+    //   MaterialPageRoute(
+    //     builder: (context) => const OnboardingScreen(isEditMode: false),
+    //   ),
+    // );
   }
 
   void _editPreferences() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const OnboardingScreen(isEditMode: true),
-      ),
-    );
+     context.go( '/onboarding', extra: {'isEditMode': true});
+    // Navigator.of(context).push(
+    //   MaterialPageRoute(
+    //     builder: (context) => const OnboardingScreen(isEditMode: true),
+    //   ),
+    // );
   }
 
   void _showClearDataDialog(UserDataProvider userDataProvider) {

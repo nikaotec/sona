@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sona/provider/user_data_provider.dart';
 import 'package:sona/service/openai_service.dart';
 import '../provider/onboarding_provider.dart';
@@ -183,7 +184,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> with TickerProvider
     return 'Criamos uma experiência personalizada baseada em suas preferências. Explore nossas categorias para descobrir o que mais combina com você.';
   }
 
-  void _finishOnboarding() {
+
+  void _finishOnboarding() async {
+    if (!widget.isEditMode) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('onboarding_completed', true);
+    }
+
     if (widget.isEditMode) {
       // Se estiver editando, voltar para o perfil
       context.go('/profile');
@@ -241,15 +248,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> with TickerProvider
       padding: const EdgeInsets.all(20),
       child: Row(
         children: [
-          // Botão voltar (apenas se não for a primeira página ou se estiver em modo de edição)
-          if (_currentPage > 0 || widget.isEditMode)
+          // Botão voltar (apenas se não for a primeira página)
+          if (_currentPage > 0)
             AnimatedButton(
-              onPressed: widget.isEditMode && _currentPage == 0 
-                  ? () => context.go('/profile')
-                  : _previousPage,
+              onPressed: _previousPage,
               isIconButton: true,
               child: const Icon(Icons.arrow_back, color: Colors.white),
-            ).animate().fadeIn().slideX(begin: -0.3, end: 0),
+            ).animate().fadeIn().slideX(begin: -0.3, end: 0)
+          else if (widget.isEditMode)
+            const SizedBox(width: 48), // Espaço para alinhar com o botão de fechar
           
           const Spacer(),
           
@@ -272,9 +279,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> with TickerProvider
           
           const Spacer(),
           
-          // Espaço para balancear o botão voltar
-          if (_currentPage > 0 || widget.isEditMode)
-            const SizedBox(width: 48),
+          // Botão de fechar (apenas em modo de edição)
+          if (widget.isEditMode)
+            AnimatedButton(
+              onPressed: () => context.go("/profile"),
+              isIconButton: true,
+              child: const Icon(Icons.close, color: Colors.white),
+            ).animate().fadeIn().slideX(begin: 0.3, end: 0)
+          else if (_currentPage == 0)
+            const SizedBox(width: 48), // Espaço para alinhar quando não há botão voltar nem fechar
         ],
       ),
     );
@@ -283,11 +296,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> with TickerProvider
   Widget _buildWelcomePage() {
     return FadeTransition(
       opacity: _fadeAnimation,
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
             // Ícone principal
             Container(
               width: 120,
@@ -361,7 +375,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> with TickerProvider
           ],
         ),
       ),
-    );
+    ));
   }
 
   Widget _buildObjectivePage() {
@@ -369,11 +383,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> with TickerProvider
       position: _slideAnimation,
       child: Consumer<OnboardingProvider>(
         builder: (context, provider, child) {
-          return Padding(
-            padding: const EdgeInsets.all(32),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
+          return SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
                 // Título
                 const Text(
                   'Qual seu principal objetivo com o MindWave?',
@@ -419,7 +434,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> with TickerProvider
                   ).animate().fadeIn(delay: 600.ms).slideY(begin: 0.3, end: 0),
               ],
             ),
-          );
+          ));
         },
       ),
     );
@@ -430,11 +445,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> with TickerProvider
       position: _slideAnimation,
       child: Consumer<OnboardingProvider>(
         builder: (context, provider, child) {
-          return Padding(
-            padding: const EdgeInsets.all(32),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
+          return SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
                 const Text(
                   'Como você está se sentindo agora?',
                   textAlign: TextAlign.center,
@@ -488,7 +504,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> with TickerProvider
                   ).animate().fadeIn(delay: 600.ms).slideY(begin: 0.3, end: 0),
               ],
             ),
-          );
+          ));
         },
       ),
     );
@@ -499,11 +515,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> with TickerProvider
       position: _slideAnimation,
       child: Consumer<OnboardingProvider>(
         builder: (context, provider, child) {
-          return Padding(
-            padding: const EdgeInsets.all(32),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
+          return SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
                 const Text(
                   'Qual tipo de som te acalma mais?',
                   textAlign: TextAlign.center,
@@ -546,7 +563,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> with TickerProvider
                   ).animate().fadeIn(delay: 600.ms).slideY(begin: 0.3, end: 0),
               ],
             ),
-          );
+          ));
         },
       ),
     );
@@ -557,11 +574,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> with TickerProvider
       position: _slideAnimation,
       child: Consumer<OnboardingProvider>(
         builder: (context, provider, child) {
-          return Padding(
-            padding: const EdgeInsets.all(32),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
+          return SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
                 const Text(
                   'Qual o melhor horário para você relaxar?',
                   textAlign: TextAlign.center,
@@ -618,18 +636,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> with TickerProvider
                   ).animate().fadeIn(delay: 600.ms).slideY(begin: 0.3, end: 0),
               ],
             ),
-          );
+          ));
         },
       ),
     );
   }
 
   Widget _buildResultPage() {
-    return Padding(
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
           if (_isLoading) ...[
             // Loading animation
             Container(
@@ -714,7 +733,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> with TickerProvider
             const SizedBox(height: 40),
             
             AnimatedButton(
-              onPressed: _finishOnboarding,
+              onPressed: () async {
+                 _finishOnboarding();
+                if (widget.isEditMode) {
+                  context.go("/profile");
+                }
+              },
               child: Text(
                 widget.isEditMode ? 'Salvar Alterações' : 'Começar Jornada',
                 style: const TextStyle(
@@ -727,7 +751,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> with TickerProvider
           ],
         ],
       ),
-    );
+    ));
   }
 }
 
@@ -949,3 +973,4 @@ class _AnimatedOptionCardState extends State<AnimatedOptionCard>
     ).animate(delay: widget.delay).fadeIn().slideX(begin: 0.3, end: 0);
   }
 }
+
