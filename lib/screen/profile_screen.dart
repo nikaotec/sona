@@ -15,7 +15,7 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
- @override
+  @override
   void initState() {
     super.initState();
     // Carregar dados do usuário ao inicializar
@@ -27,7 +27,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    
+
     return Scaffold(
       backgroundColor: const Color(0xFF1A1A2E),
       appBar: AppBar(
@@ -41,10 +41,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             fontWeight: FontWeight.bold,
           ),
         ).animate().fadeIn().slideX(begin: -0.3, end: 0),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => context.go('/categories'),
-        ).animate().fadeIn(delay: 100.ms).scale(),
+        leading:
+            IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              onPressed: () => context.go('/categories'),
+            ).animate().fadeIn(delay: 100.ms).scale(),
       ),
       body: Consumer<UserDataProvider>(
         builder: (context, userDataProvider, child) {
@@ -55,24 +56,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: [
                 // Header do perfil
                 _buildProfileHeader(user, userDataProvider),
-                
+
                 const SizedBox(height: 32),
-                
+
                 // Seção de preferências
                 _buildPreferencesSection(userDataProvider),
-                
+
                 const SizedBox(height: 32),
-                
+
                 // Seção de estatísticas
                 _buildStatsSection(userDataProvider),
-                
+
                 const SizedBox(height: 32),
-                
+
                 // Seção de configurações
                 _buildSettingsSection(userDataProvider),
-                
+
                 const SizedBox(height: 32),
-                
+
                 // Botão de logout
                 _buildLogoutButton(),
               ],
@@ -113,15 +114,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
               shape: BoxShape.circle,
               border: Border.all(color: Colors.white, width: 3),
             ),
-            child: Icon(
-              Icons.person,
-              size: 40,
-              color: Colors.white,
-            ),
+            child: Icon(Icons.person, size: 40, color: Colors.white),
           ).animate().scale(delay: 200.ms, curve: Curves.elasticOut),
-          
+
           const SizedBox(height: 16),
-          
+
           // Nome/Email
           Text(
             user?.displayName ?? user?.email?.split('@').first ?? 'Usuário',
@@ -131,9 +128,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               fontWeight: FontWeight.bold,
             ),
           ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.3, end: 0),
-          
+
           const SizedBox(height: 8),
-          
+
           Text(
             user?.email ?? 'Usuário anônimo',
             style: TextStyle(
@@ -141,9 +138,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               fontSize: 16,
             ),
           ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.3, end: 0),
-          
+
           const SizedBox(height: 16),
-          
+
           // Status do onboarding
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -155,16 +152,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
-                  userDataProvider.hasCompletedOnboarding 
-                      ? Icons.check_circle 
+                  userDataProvider.hasCompletedOnboarding
+                      ? Icons.check_circle
                       : Icons.help_outline,
                   color: Colors.white,
                   size: 16,
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  userDataProvider.hasCompletedOnboarding 
-                      ? 'Perfil Personalizado' 
+                  userDataProvider.hasCompletedOnboarding
+                      ? 'Perfil Personalizado'
                       : 'Complete seu perfil',
                   style: const TextStyle(
                     color: Colors.white,
@@ -192,9 +189,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             fontWeight: FontWeight.bold,
           ),
         ).animate().fadeIn(delay: 600.ms).slideX(begin: -0.3, end: 0),
-        
+
         const SizedBox(height: 16),
-        
+
         if (userDataProvider.hasCompletedOnboarding) ...[
           _buildPreferenceCard(
             'Objetivo Principal',
@@ -202,21 +199,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Icons.flag,
             () => _editPreferences(),
           ),
-          
+
           _buildPreferenceCard(
             'Estado Emocional',
             userDataProvider.onboardingData?.humor ?? 'Não definido',
             Icons.mood,
             () => _editPreferences(),
           ),
-          
+
           _buildPreferenceCard(
             'Estilo Preferido',
             userDataProvider.onboardingData?.estilo ?? 'Não definido',
             Icons.music_note,
             () => _editPreferences(),
           ),
-          
+
           _buildPreferenceCard(
             'Horário Preferido',
             userDataProvider.onboardingData?.horario ?? 'Não definido',
@@ -264,7 +261,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   onPressed: () => _startOnboarding(),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF6C63FF),
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -285,7 +285,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildPreferenceCard(String title, String value, IconData icon, VoidCallback onTap) {
+  Widget _buildPreferenceCard(
+    String title,
+    String value,
+    IconData icon,
+    VoidCallback onTap,
+  ) {
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 12),
@@ -301,11 +306,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             color: const Color(0xFF6C63FF).withOpacity(0.2),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(
-            icon,
-            color: const Color(0xFF6C63FF),
-            size: 24,
-          ),
+          child: Icon(icon, color: const Color(0xFF6C63FF), size: 24),
         ),
         title: Text(
           title,
@@ -317,16 +318,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         subtitle: Text(
           value,
-          style: TextStyle(
-            color: Colors.white.withOpacity(0.7),
-            fontSize: 14,
-          ),
+          style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 14),
         ),
-        trailing: const Icon(
-          Icons.edit,
-          color: Color(0xFF6C63FF),
-          size: 20,
-        ),
+        trailing: const Icon(Icons.edit, color: Color(0xFF6C63FF), size: 20),
         onTap: onTap,
       ),
     ).animate().fadeIn(delay: 700.ms).slideX(begin: 0.3, end: 0);
@@ -334,7 +328,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildStatsSection(UserDataProvider userDataProvider) {
     final stats = userDataProvider.getUserStats();
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -346,9 +340,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             fontWeight: FontWeight.bold,
           ),
         ).animate().fadeIn(delay: 800.ms).slideX(begin: -0.3, end: 0),
-        
+
         const SizedBox(height: 16),
-        
+
         Row(
           children: [
             Expanded(
@@ -374,7 +368,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -389,11 +388,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               color: color.withOpacity(0.2),
               shape: BoxShape.circle,
             ),
-            child: Icon(
-              icon,
-              color: color,
-              size: 24,
-            ),
+            child: Icon(icon, color: color, size: 24),
           ),
           const SizedBox(height: 12),
           Text(
@@ -430,9 +425,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             fontWeight: FontWeight.bold,
           ),
         ).animate().fadeIn(delay: 1000.ms).slideX(begin: -0.3, end: 0),
-        
+
         const SizedBox(height: 16),
-        
+
         _buildSettingItem(
           'Editar Preferências',
           'Alterar suas respostas do questionário inicial',
@@ -440,7 +435,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           () => _editPreferences(),
           enabled: userDataProvider.hasCompletedOnboarding,
         ),
-        
+
         _buildSettingItem(
           'Limpar Dados',
           'Remover todas as preferências salvas',
@@ -449,7 +444,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           enabled: userDataProvider.hasCompletedOnboarding,
           isDestructive: true,
         ),
-        
+
         _buildSettingItem(
           'Sobre o App',
           'Informações sobre o MindWave',
@@ -480,7 +475,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: (isDestructive ? Colors.red : const Color(0xFF6C63FF)).withOpacity(0.2),
+            color: (isDestructive ? Colors.red : const Color(0xFF6C63FF))
+                .withOpacity(0.2),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(
@@ -500,13 +496,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
         subtitle: Text(
           subtitle,
           style: TextStyle(
-            color: enabled ? Colors.white.withOpacity(0.7) : Colors.white.withOpacity(0.3),
+            color:
+                enabled
+                    ? Colors.white.withOpacity(0.7)
+                    : Colors.white.withOpacity(0.3),
             fontSize: 14,
           ),
         ),
         trailing: Icon(
           Icons.chevron_right,
-          color: enabled ? Colors.white.withOpacity(0.7) : Colors.white.withOpacity(0.3),
+          color:
+              enabled
+                  ? Colors.white.withOpacity(0.7)
+                  : Colors.white.withOpacity(0.3),
         ),
         onTap: enabled ? onTap : null,
       ),
@@ -520,9 +522,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFF2A2A3E),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.red.withOpacity(0.3),
-        ),
+        border: Border.all(color: Colors.red.withOpacity(0.3)),
       ),
       child: Material(
         color: Colors.transparent,
@@ -532,11 +532,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: const Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                Icons.logout,
-                color: Colors.red,
-                size: 24,
-              ),
+              Icon(Icons.logout, color: Colors.red, size: 24),
               SizedBox(width: 12),
               Text(
                 'Sair da Conta',
@@ -554,136 +550,126 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _startOnboarding() {
-    context.go( '/onboarding', extra: {'isEditMode': false});
-    // Navigator.of(context).push(
-    //   MaterialPageRoute(
-    //     builder: (context) => const OnboardingScreen(isEditMode: false),
-    //   ),
-    // );
+    context.go('/onboarding', extra: {'isEditMode': false});
   }
 
   void _editPreferences() {
-     context.go( '/onboarding', extra: {'isEditMode': true});
-    // Navigator.of(context).push(
-    //   MaterialPageRoute(
-    //     builder: (context) => const OnboardingScreen(isEditMode: true),
-    //   ),
-    // );
+    context.go('/onboarding', extra: {'isEditMode': true});
   }
 
   void _showClearDataDialog(UserDataProvider userDataProvider) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF2A2A3E),
-        title: const Text(
-          'Limpar Dados',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: const Text(
-          'Tem certeza que deseja remover todas as suas preferências? Esta ação não pode ser desfeita.',
-          style: TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text(
-              'Cancelar',
-              style: TextStyle(color: Color(0xFF6C63FF)),
+      builder:
+          (context) => AlertDialog(
+            backgroundColor: const Color(0xFF2A2A3E),
+            title: const Text(
+              'Limpar Dados',
+              style: TextStyle(color: Colors.white),
             ),
-          ),
-          TextButton(
-            onPressed: () async {
-              await userDataProvider.clearOnboardingData();
-              Navigator.of(context).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Dados removidos com sucesso'),
-                  backgroundColor: Colors.green,
+            content: const Text(
+              'Tem certeza que deseja remover todas as suas preferências? Esta ação não pode ser desfeita.',
+              style: TextStyle(color: Colors.white70),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text(
+                  'Cancelar',
+                  style: TextStyle(color: Color(0xFF6C63FF)),
                 ),
-              );
-            },
-            child: const Text(
-              'Confirmar',
-              style: TextStyle(color: Colors.red),
-            ),
+              ),
+              TextButton(
+                onPressed: () async {
+                  await userDataProvider.clearOnboardingData();
+                  Navigator.of(context).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Dados removidos com sucesso'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                },
+                child: const Text(
+                  'Confirmar',
+                  style: TextStyle(color: Colors.red),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
   void _showAboutDialog() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF2A2A3E),
-        title: const Text(
-          'Sobre o MindWave',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'MindWave é um aplicativo de relaxamento e foco que oferece sons da natureza, meditações guiadas e batidas binaurais para melhorar seu bem-estar.',
-              style: TextStyle(color: Colors.white70),
+      builder:
+          (context) => AlertDialog(
+            backgroundColor: const Color(0xFF2A2A3E),
+            title: const Text(
+              'Sobre o MindWave',
+              style: TextStyle(color: Colors.white),
             ),
-            SizedBox(height: 16),
-            Text(
-              'Versão: 1.0.0',
-              style: TextStyle(color: Colors.white70, fontSize: 12),
+            content: const Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'MindWave é um aplicativo de relaxamento e foco que oferece sons da natureza, meditações guiadas e batidas binaurais para melhorar seu bem-estar.',
+                  style: TextStyle(color: Colors.white70),
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'Versão: 1.0.0',
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+              ],
             ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text(
-              'Fechar',
-              style: TextStyle(color: Color(0xFF6C63FF)),
-            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text(
+                  'Fechar',
+                  style: TextStyle(color: Color(0xFF6C63FF)),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
   void _showLogoutDialog() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF2A2A3E),
-        title: const Text(
-          'Sair da Conta',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: const Text(
-          'Tem certeza que deseja sair da sua conta?',
-          style: TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text(
-              'Cancelar',
-              style: TextStyle(color: Color(0xFF6C63FF)),
+      builder:
+          (context) => AlertDialog(
+            backgroundColor: const Color(0xFF2A2A3E),
+            title: const Text(
+              'Sair da Conta',
+              style: TextStyle(color: Colors.white),
             ),
-          ),
-          TextButton(
-            onPressed: () async {
-              await AuthService().signOut();
-              Navigator.of(context).pop();
-              context.go('/login');
-            },
-            child: const Text(
-              'Sair',
-              style: TextStyle(color: Colors.red),
+            content: const Text(
+              'Tem certeza que deseja sair da sua conta?',
+              style: TextStyle(color: Colors.white70),
             ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text(
+                  'Cancelar',
+                  style: TextStyle(color: Color(0xFF6C63FF)),
+                ),
+              ),
+              TextButton(
+                onPressed: () async {
+                  await AuthService().signOut();
+                  Navigator.of(context).pop();
+                  context.go('/login');
+                },
+                child: const Text('Sair', style: TextStyle(color: Colors.red)),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 }
