@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:sona/components/circular_music_visualizer.dart';
+import 'package:sona/components/visualizer_style_manager.dart';
 import 'package:sona/provider/audio_provider.dart';
 import 'package:sona/components/banner_ad_widget.dart';
 import 'package:sona/provider/paywall_provider.dart';
@@ -22,6 +24,10 @@ class _PlayerScreenState extends State<PlayerScreen>  with TickerProviderStateMi
   late Animation<double> _rotationAnimation;
   late Animation<double> _pulseAnimation;
   late Animation<Offset> _slideAnimation;
+  
+  // Variáveis para o visualizador
+  VisualizerStyleConfig? _currentVisualizerStyle;
+  bool _showVisualizer = true;
 
   @override
   void initState() {
@@ -94,12 +100,26 @@ class _PlayerScreenState extends State<PlayerScreen>  with TickerProviderStateMi
     return '$twoDigitMinutes:$twoDigitSeconds';
   }
 
+  void _generateNewVisualizerStyle(dynamic audio) {
+    if (audio != null) {
+      _currentVisualizerStyle = VisualizerStyleManager.getStyleForMusic(
+        category: audio.category,
+        title: audio.title,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<AudioProvider>(
       builder: (context, audioProvider, child) {
         final paywallProvider = Provider.of<PaywallProvider>(context);
         final audio = audioProvider.currentAudio;
+
+        // Gerar novo estilo de visualizador se necessário
+        if (audio != null && _currentVisualizerStyle == null) {
+          _generateNewVisualizerStyle(audio);
+        }
 
         // Controlar animações baseado no estado de reprodução
         if (audioProvider.isPlaying) {
@@ -212,27 +232,103 @@ class _PlayerScreenState extends State<PlayerScreen>  with TickerProviderStateMi
   Widget _buildAnimatedMusicIcon(double screenWidth) {
     return Container(
       margin: EdgeInsets.symmetric(horizontal: screenWidth * 0.1),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(screenWidth * 0.05),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF6C63FF).withOpacity(0.3),
-            blurRadius: screenWidth * 0.1,
-            offset: Offset(0, screenWidth * 0.05),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(screenWidth * 0.05),
-        child: widget.heroTag != null
-          ? Hero(
-              tag: widget.heroTag!,
-              child: Material(
-                color: Colors.transparent,
-                child: _buildRotatingIcon(screenWidth),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Visualizador circular de fundo
+          if (_showVisualizer && _currentVisualizerStyle != null)
+            CircularMusicVisualizer(
+              size: screenWidth * 0.8,
+              isPlaying: Provider.of<AudioProvider>(context, listen: false).isPlaying,
+              style: _currentVisualizerStyle!.style,
+              primaryColor: _currentVisualizerStyle!.primaryColor,
+              secondaryColor: _currentVisualizerStyle!.secondaryColor,
+              intensity: VisualizerStyleManager.getIntensityForMusic(
+                Provider.of<AudioProvider>(context, listen: false).currentAudio?.category,
+                Provider.of<AudioProvider>(context, listen: false).currentAudio?.title,
               ),
-            )
-          : _buildRotatingIcon(screenWidth),
+            ),
+          
+          // Ícone central com decoração
+          // Container(
+          //   width: screenWidth * 0.4,
+          //   height: screenWidth * 0.4,
+          //   decoration: BoxDecoration(
+          //     borderRadius: BorderRadius.circular(screenWidth * 0.05),
+          //     boxShadow: [
+          //       BoxShadow(
+          //         color: (_currentVisualizerStyle?.primaryColor ?? const Color(0xFF6C63FF)).withOpacity(0.3),
+          //         blurRadius: screenWidth * 0.1,
+          //         offset: Offset(0, screenWidth * 0.05),
+          //       ),
+          //     ],
+          //   ),
+          //   child: ClipRRect(
+          //     borderRadius: BorderRadius.circular(screenWidth * 0.05),
+          //     child: widget.heroTag != null
+          //       ? Hero(
+          //           tag: widget.heroTag!,
+          //           child: Material(
+          //             color: Colors.transparent,
+          //             child: _buildRotatingIcon(screenWidth),
+          //           ),
+          //         )
+          //       : _buildRotatingIcon(screenWidth),
+          //   ),
+          // ),
+          
+          // Botão para alternar visualizador
+          Positioned(
+            top: 10,
+            right: 10,
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  if (_showVisualizer) {
+                    _generateNewVisualizerStyle(
+                      Provider.of<AudioProvider>(context, listen: false).currentAudio
+                    );
+                  } else {
+                    _showVisualizer = !_showVisualizer;
+                  }
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Icon(
+                  _showVisualizer ? Icons.refresh : Icons.visibility,
+                  color: Colors.white.withOpacity(0.8),
+                  size: 20,
+                ),
+              ),
+            ),
+          ),
+          
+          // Indicador do estilo atual
+          if (_showVisualizer && _currentVisualizerStyle != null)
+            Positioned(
+              bottom: 10,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Text(
+                  _currentVisualizerStyle!.name,
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.9),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     ).animate().scale(delay: 400.ms, duration: 800.ms, curve: Curves.elasticOut);
   }
