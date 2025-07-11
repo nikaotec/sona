@@ -554,7 +554,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _editPreferences() {
-    context.go('/onboarding', extra: {'isEditMode': true});
+    //context.go('/onboarding', extra: {'isEditMode': true});
+    context.go('/onboarding?edit=true');
   }
 
   void _showClearDataDialog(UserDataProvider userDataProvider) {

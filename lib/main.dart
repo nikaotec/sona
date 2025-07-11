@@ -60,7 +60,6 @@ class SonaApp extends StatelessWidget {
           builder: (context, state) {
             final extra = state.extra as Map<String, dynamic>?;
             return CategoryMusicListScreen(
-              // Versão corrigida
               categoryName: extra?['categoryName'] ?? 'Categoria',
               audios: extra?['audios'] ?? [],
               heroTag: extra?['heroTag'],
@@ -72,7 +71,6 @@ class SonaApp extends StatelessWidget {
           builder: (context, state) {
             final extra = state.extra as Map<String, dynamic>?;
             return PlayerScreen(
-              // Versão corrigida
               heroTag: extra?['heroTag'],
             );
           },
@@ -80,24 +78,29 @@ class SonaApp extends StatelessWidget {
         GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
         GoRoute(path: '/paywall', builder: (_, __) => const PaywallScreen()),
       ],
-      // Configuração de redirecionamento se necessário
       redirect: (context, state) async {
         final prefs = await SharedPreferences.getInstance();
         final onboardingCompleted =
             prefs.getBool("onboarding_completed") ?? false;
 
-        final isEditMode =
-            state.extra is Map && (state.extra as Map)['isEditMode'] == true;
+        // Verifica se estamos tentando acessar /onboarding com modo edição
+        final isEditModeQueryParam = state.uri.queryParameters.containsKey('edit') &&
+            state.uri.queryParameters['edit'] == 'true';
 
-        if (state.fullPath == '/onboarding' && isEditMode) {
-          return '{/onboarding?isEditMode=$isEditMode}';
-        } else if (onboardingCompleted &&
-            state.fullPath == '/onboarding' &&
-            !isEditMode) {
-          return "/categories";
-        } else {
-          return null;
+        if (state.matchedLocation == '/onboarding') {
+          if (isEditModeQueryParam) {
+            // Permitir acesso ao onboarding no modo edição
+            return null; // Não redireciona
+          } else if (!onboardingCompleted) {
+            // Primeira vez: permanece no onboarding
+            return null;
+          } else {
+            // Já completou antes: vai direto para categorias
+            return '/categories';
+          }
         }
+
+        return null; // Nenhum redirecionamento necessário
       },
     );
 
@@ -110,10 +113,8 @@ class SonaApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => SubscriptionProvider()),
         ChangeNotifierProvider(create: (_) => OnboardingProvider()),
         ChangeNotifierProxyProvider<SubscriptionProvider, VideoAdProvider>(
-          create:
-              (context) => VideoAdProvider(
-                Provider.of<SubscriptionProvider>(context, listen: false),
-              ),
+          create: (context) =>
+              VideoAdProvider(Provider.of<SubscriptionProvider>(context, listen: false)),
           update: (context, subscriptionProvider, videoAdProvider) {
             return videoAdProvider ?? VideoAdProvider(subscriptionProvider);
           },
@@ -122,8 +123,7 @@ class SonaApp extends StatelessWidget {
           create: (context) => PaywallProvider(),
           update: (context, subscriptionProvider, paywallProvider) {
             paywallProvider ??= PaywallProvider();
-            paywallProvider
-                .loadData(); // Garante que os dados são carregados após a inicialização
+            paywallProvider.loadData();
             return paywallProvider;
           },
         ),
@@ -140,13 +140,11 @@ class SonaApp extends StatelessWidget {
       child: MaterialApp.router(
         title: 'Sona',
         theme: ThemeData.dark().copyWith(
-          // Personalização do tema se necessário
           primaryColor: const Color(0xFF6B73FF),
           colorScheme: const ColorScheme.dark(
             primary: Color(0xFF6B73FF),
             secondary: Color(0xFF9644FF),
           ),
-          // Configurações de transição de página
           pageTransitionsTheme: const PageTransitionsTheme(
             builders: {
               TargetPlatform.android: CupertinoPageTransitionsBuilder(),
