@@ -7,6 +7,7 @@ import 'package:sona/provider/audio_provider.dart';
 
 // Providers
 import 'package:sona/provider/enhanced_audio_provider.dart';
+import 'package:sona/provider/mix_manager_provider.dart';
 import 'package:sona/provider/user_data_provider.dart';
 import 'package:sona/provider/paywall_provider.dart';
 import 'package:sona/provider/subscription_provider.dart';
@@ -57,6 +58,7 @@ class MyApp extends StatelessWidget {
         Provider<AudioDownloadService>(create: (_) => AudioDownloadService()),
         ChangeNotifierProvider(create: (_) => SubscriptionProvider()),
         ChangeNotifierProvider(create: (_) => OnboardingProvider()),
+        ChangeNotifierProvider(create: (_) => MixManagerProvider()..initialize()),
         ChangeNotifierProxyProvider<SubscriptionProvider, VideoAdProvider>(
           create: (context) =>
               VideoAdProvider(Provider.of<SubscriptionProvider>(context, listen: false)),

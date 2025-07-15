@@ -1333,32 +1333,7 @@ class _EnhancedMusicCardState extends State<EnhancedMusicCard>
                     // Botões de ação
                     Column(
                       children: [
-                        // Botão de Mix
-                        GestureDetector(
-                          onTap: widget.onMixToggle,
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: widget.isInMix
-                                  ? const Color(0xFF6C63FF)
-                                  : const Color(0xFF2A2A3E),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: const Color(0xFF6C63FF).withOpacity(0.3),
-                              ),
-                            ),
-                            child: Icon(
-                              widget.isInMix 
-                                  ? Icons.check_circle 
-                                  : Icons.add_circle_outline,
-                              color: widget.isInMix 
-                                  ? Colors.white 
-                                  : const Color(0xFF6C63FF),
-                              size: 20,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
+
                         // Botão de Download
                         GestureDetector(
                           onTap: widget.onDownload,
