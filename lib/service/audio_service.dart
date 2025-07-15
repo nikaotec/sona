@@ -1,36 +1,33 @@
 import 'package:just_audio/just_audio.dart';
 import 'package:audio_session/audio_session.dart';
+import 'package:flutter/foundation.dart';
 
+/// Serviço de áudio avançado com suporte para múltiplos players simultâneos
 class AudioService {
-  final AudioPlayer _musicPlayer = AudioPlayer();
-  final AudioPlayer _soundPlayer = AudioPlayer();
-  AudioSession? _session;
-  
-  // Estado dos players
-  bool _isMusicPlaying = false;
-  bool _isSoundPlaying = false;
-  
-  // Volumes individuais
-  double _musicVolume = 1.0;
-  double _soundVolume = 1.0;
-  
-  // URLs atuais
-  String? _currentMusicUrl;
-  String? _currentSoundUrl;
-  
-  // Posição salva para resume
-  Duration? _lastMusicPosition;
-  Duration? _lastSoundPosition;
+  static final AudioService _instance = AudioService._internal();
+  factory AudioService() => _instance;
+  AudioService._internal();
 
-  AudioService() {
-    _initializeAudioSession();
-    _setupPlayerListeners();
-  }
+  // Mapa de players ativos por ID
+  final Map<String, AudioPlayer> _players = {};
+  
+  // Player principal para controle geral
+  AudioPlayer? _mainPlayer;
+  
+  // Configuração da sessão de áudio
+  AudioSession? _audioSession;
+  
+  // Estado de inicialização
+  bool _isInitialized = false;
 
-  Future<void> _initializeAudioSession() async {
+  /// Inicializa o serviço de áudio
+  Future<void> initialize() async {
+    if (_isInitialized) return;
+
     try {
-      _session = await AudioSession.instance;
-      await _session!.configure(const AudioSessionConfiguration(
+      // Configurar sessão de áudio
+      _audioSession = await AudioSession.instance;
+      await _audioSession!.configure(const AudioSessionConfiguration(
         avAudioSessionCategory: AVAudioSessionCategory.playback,
         avAudioSessionCategoryOptions: AVAudioSessionCategoryOptions.mixWithOthers,
         avAudioSessionMode: AVAudioSessionMode.defaultMode,
@@ -42,209 +39,228 @@ class AudioService {
           usage: AndroidAudioUsage.media,
         ),
         androidAudioFocusGainType: AndroidAudioFocusGainType.gain,
-        androidWillPauseWhenDucked: false,
+        androidWillPauseWhenDucked: true,
       ));
+
+      _isInitialized = true;
+      debugPrint('EnhancedAudioService initialized successfully');
     } catch (e) {
-      print("Error initializing audio session: $e");
-    }
-  }
-
-  void _setupPlayerListeners() {
-    // Listeners para o player de música
-    _musicPlayer.playerStateStream.listen((state) {
-      _isMusicPlaying = state.playing;
-    });
-
-    // Listeners para o player de sons
-    _soundPlayer.playerStateStream.listen((state) {
-      _isSoundPlaying = state.playing;
-    });
-  }
-
-  // Métodos para música principal
-  Future<void> loadMusic(String url) async {
-    try {
-      _currentMusicUrl = url;
-      if (url.startsWith('assets/')) {
-        await _musicPlayer.setAsset(url);
-      } else {
-        await _musicPlayer.setUrl(url);
-      }
-    } catch (e) {
-      print("Error loading music: $e");
+      debugPrint('Error initializing EnhancedAudioService: $e');
       rethrow;
     }
   }
 
-  Future<void> playMusic() async {
-    try {
-      // Se é a mesma URL e temos uma posição salva, resume da posição
-      if (_lastMusicPosition != null && _currentMusicUrl != null) {
-        await _musicPlayer.seek(_lastMusicPosition!);
-        _lastMusicPosition = null;
-      }
-      await _musicPlayer.play();
-    } catch (e) {
-      print("Error playing music: $e");
+  /// Cria ou obtém um player por ID
+  AudioPlayer getPlayer(String playerId) {
+    if (!_players.containsKey(playerId)) {
+      _players[playerId] = AudioPlayer();
+      debugPrint('Created new player: $playerId');
     }
+    return _players[playerId]!;
   }
 
-  void pauseMusic() {
-    _lastMusicPosition = _musicPlayer.position;
-    _musicPlayer.pause();
+  /// Define o player principal
+  void setMainPlayer(String playerId) {
+    _mainPlayer = getPlayer(playerId);
+    debugPrint('Main player set to: $playerId');
   }
 
-  void stopMusic() {
-    _musicPlayer.stop();
-    _lastMusicPosition = null;
-    _currentMusicUrl = null;
-  }
-
-  Future<void> resumeMusic() async {
-    if (_lastMusicPosition != null) {
-      await _musicPlayer.seek(_lastMusicPosition!);
-      _lastMusicPosition = null;
-    }
-    await _musicPlayer.play();
-  }
-
-  // Métodos para sons ambientes/efeitos
-  Future<void> loadSound(String url) async {
+  /// Carrega áudio em um player específico
+  Future<void> loadAudio(String playerId, String url) async {
+    await initialize();
+    
+    final player = getPlayer(playerId);
+    
     try {
-      _currentSoundUrl = url;
       if (url.startsWith('assets/')) {
-        await _soundPlayer.setAsset(url);
+        await player.setAsset(url);
       } else {
-        await _soundPlayer.setUrl(url);
+        await player.setUrl(url);
       }
+      debugPrint('Audio loaded in player $playerId: $url');
     } catch (e) {
-      print("Error loading sound: $e");
+      debugPrint('Error loading audio in player $playerId: $e');
       rethrow;
     }
   }
 
-  Future<void> playSound() async {
-    try {
-      // Configurar para loop se for um som ambiente
-      await _soundPlayer.setLoopMode(LoopMode.one);
-      await _soundPlayer.play();
-    } catch (e) {
-      print("Error playing sound: $e");
+  /// Reproduz áudio em um player específico
+  Future<void> play(String playerId) async {
+    final player = getPlayer(playerId);
+    await player.play();
+    debugPrint('Playing audio in player: $playerId');
+  }
+
+  /// Pausa áudio em um player específico
+  void pause(String playerId) {
+    final player = _players[playerId];
+    if (player != null) {
+      player.pause();
+      debugPrint('Paused audio in player: $playerId');
     }
   }
 
-  void pauseSound() {
-    _lastSoundPosition = _soundPlayer.position;
-    _soundPlayer.pause();
-  }
-
-  void stopSound() {
-    _soundPlayer.stop();
-    _lastSoundPosition = null;
-    _currentSoundUrl = null;
-  }
-
-  Future<void> resumeSound() async {
-    if (_lastSoundPosition != null) {
-      await _soundPlayer.seek(_lastSoundPosition!);
-      _lastSoundPosition = null;
-    }
-    await _soundPlayer.play();
-  }
-
-  // Métodos de mixagem
-  Future<void> playMix(String musicUrl, String soundUrl) async {
-    try {
-      // Carrega e toca a música principal
-      await loadMusic(musicUrl);
-      await playMusic();
-      
-      // Carrega e toca o som ambiente
-      await loadSound(soundUrl);
-      await playSound();
-    } catch (e) {
-      print("Error playing mix: $e");
+  /// Para áudio em um player específico
+  void stop(String playerId) {
+    final player = _players[playerId];
+    if (player != null) {
+      player.stop();
+      debugPrint('Stopped audio in player: $playerId');
     }
   }
 
-  void pauseMix() {
-    pauseMusic();
-    pauseSound();
+  /// Para todos os players
+  void stopAll() {
+    for (final entry in _players.entries) {
+      entry.value.stop();
+      debugPrint('Stopped player: ${entry.key}');
+    }
   }
 
-  void resumeMix() {
-    resumeMusic();
-    resumeSound();
+  /// Pausa todos os players
+  void pauseAll() {
+    for (final entry in _players.entries) {
+      entry.value.pause();
+      debugPrint('Paused player: ${entry.key}');
+    }
   }
 
-  void stopMix() {
-    stopMusic();
-    stopSound();
+  /// Define volume para um player específico
+  Future<void> setVolume(String playerId, double volume) async {
+    final player = _players[playerId];
+    if (player != null) {
+      await player.setVolume(volume.clamp(0.0, 1.0));
+      debugPrint('Set volume for player $playerId: $volume');
+    }
   }
 
-  // Controle de volume
-  Future<void> setMusicVolume(double volume) async {
-    _musicVolume = volume.clamp(0.0, 1.0);
-    await _musicPlayer.setVolume(_musicVolume);
-  }
-
-  Future<void> setSoundVolume(double volume) async {
-    _soundVolume = volume.clamp(0.0, 1.0);
-    await _soundPlayer.setVolume(_soundVolume);
-  }
-
-  Future<void> setMasterVolume(double volume) async {
+  /// Define volume para todos os players
+  Future<void> setVolumeAll(double volume) async {
     final clampedVolume = volume.clamp(0.0, 1.0);
-    await _musicPlayer.setVolume(_musicVolume * clampedVolume);
-    await _soundPlayer.setVolume(_soundVolume * clampedVolume);
+    for (final entry in _players.entries) {
+      await entry.value.setVolume(clampedVolume);
+    }
+    debugPrint('Set volume for all players: $clampedVolume');
   }
 
-  // Seek apenas para música principal
-  Future<void> seek(Duration position) async {
-    await _musicPlayer.seek(position);
+  /// Busca posição em um player específico
+  Future<void> seek(String playerId, Duration position) async {
+    final player = _players[playerId];
+    if (player != null) {
+      await player.seek(position);
+      debugPrint('Seeked player $playerId to: $position');
+    }
   }
 
-  // Getters para streams (apenas música principal para UI)
-  Stream<Duration> get positionStream => _musicPlayer.positionStream;
-  Stream<Duration?> get durationStream => _musicPlayer.durationStream;
-  Stream<PlayerState> get playerStateStream => _musicPlayer.playerStateStream;
-
-  // Getters para estado
-  bool get isMusicPlaying => _isMusicPlaying;
-  bool get isSoundPlaying => _isSoundPlaying;
-  bool get isMixPlaying => _isMusicPlaying && _isSoundPlaying;
-  
-  double get musicVolume => _musicVolume;
-  double get soundVolume => _soundVolume;
-
-  // Método legado para compatibilidade
-  Future<void> load(String url) async {
-    await loadMusic(url);
+  /// Obtém stream de posição de um player
+  Stream<Duration> getPositionStream(String playerId) {
+    final player = _players[playerId];
+    return player?.positionStream ?? const Stream.empty();
   }
 
-  Future<void> play() async {
-    await playMusic();
+  /// Obtém stream de duração de um player
+  Stream<Duration?> getDurationStream(String playerId) {
+    final player = _players[playerId];
+    return player?.durationStream ?? const Stream.empty();
   }
 
-  void pause() {
-    pauseMusic();
+  /// Obtém stream de estado de um player
+  Stream<PlayerState> getPlayerStateStream(String playerId) {
+    final player = _players[playerId];
+    return player?.playerStateStream ?? const Stream.empty();
   }
 
-  void stop() {
-    stopMusic();
+  /// Verifica se um player está tocando
+  bool isPlaying(String playerId) {
+    final player = _players[playerId];
+    return player?.playing ?? false;
   }
 
-  void resume() {
-    resumeMusic();
+  /// Obtém a duração atual de um player
+  Duration? getDuration(String playerId) {
+    final player = _players[playerId];
+    return player?.duration;
   }
 
-  Future<void> setVolume(double value) async {
-    await setMusicVolume(value);
+  /// Obtém a posição atual de um player
+  Duration getPosition(String playerId) {
+    final player = _players[playerId];
+    return player?.position ?? Duration.zero;
   }
 
-  void dispose() {
-    _musicPlayer.dispose();
-    _soundPlayer.dispose();
+  /// Remove um player específico
+  void removePlayer(String playerId) {
+    final player = _players.remove(playerId);
+    if (player != null) {
+      player.dispose();
+      debugPrint('Removed player: $playerId');
+    }
+  }
+
+  /// Cria um mix de múltiplos áudios
+  Future<void> createMix(Map<String, String> audioSources) async {
+    await initialize();
+    
+    // Para todos os players existentes
+    stopAll();
+    
+    // Carrega e reproduz cada áudio
+    for (final entry in audioSources.entries) {
+      await loadAudio(entry.key, entry.value);
+      await play(entry.key);
+    }
+    
+    debugPrint('Created mix with ${audioSources.length} audio sources');
+  }
+
+  /// Adiciona áudio ao mix atual
+  Future<void> addToMix(String playerId, String url, {double volume = 1.0}) async {
+    await loadAudio(playerId, url);
+    await setVolume(playerId, volume);
+    await play(playerId);
+    debugPrint('Added to mix: $playerId');
+  }
+
+  /// Remove áudio do mix
+  void removeFromMix(String playerId) {
+    stop(playerId);
+    removePlayer(playerId);
+    debugPrint('Removed from mix: $playerId');
+  }
+
+  /// Obtém lista de players ativos
+  List<String> getActivePlayers() {
+    return _players.keys.toList();
+  }
+
+  /// Verifica se há algum player tocando
+  bool get hasPlayingAudio {
+    return _players.values.any((player) => player.playing);
+  }
+
+  /// Obtém o player principal
+  AudioPlayer? get mainPlayer => _mainPlayer;
+
+  /// Limpa todos os recursos
+  Future<void> dispose() async {
+    for (final player in _players.values) {
+      await player.dispose();
+    }
+    _players.clear();
+    _mainPlayer = null;
+    _isInitialized = false;
+    debugPrint('EnhancedAudioService disposed');
+  }
+
+  /// Configurações avançadas para segundo plano (preparação futura)
+  Future<void> enableBackgroundPlayback() async {
+    // Implementação futura para reprodução em segundo plano
+    debugPrint('Background playback configuration ready for implementation');
+  }
+
+  /// Configurações de cache (preparação futura)
+  Future<void> enableCaching() async {
+    // Implementação futura para cache de áudio
+    debugPrint('Audio caching configuration ready for implementation');
   }
 }
-

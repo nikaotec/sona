@@ -77,6 +77,7 @@ flutter:
   assets:
     - assets/music/
     - assets/music/bineural/
+    - assets/music/instrumental/
     - assets/music/manifest.json
     - assets/images/
     # - images/a_dot_ham.jpeg

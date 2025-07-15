@@ -1,258 +1,349 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:sona/model/audio_model.dart';
 import 'package:sona/provider/paywall_provider.dart';
 import 'package:sona/service/ad_service.dart';
-import 'package:sona/service/audio_service.dart';
+import 'package:sona/service/enhanced_audio_service.dart';
 import 'package:just_audio/just_audio.dart';
 
+/// Provider de áudio avançado com suporte para múltiplos players simultâneos
 class AudioProvider extends ChangeNotifier {
-  final AudioService _service = AudioService();
+  final EnhancedAudioService _audioService = EnhancedAudioService();
+  
+  // Player principal
+  static const String mainPlayerId = 'main_player';
+  
+  // Estado do player principal
   AudioModel? _currentAudio;
-  AudioModel? _currentSound;
   bool _isPlaying = false;
-  bool _isPaused = false;
-  bool _isMixMode = false;
-  AdService? _adService;
+  bool _isLoading = false;
   Duration _currentPosition = Duration.zero;
   Duration _totalDuration = Duration.zero;
-  bool _isLoading = false;
   
-  // Controles de volume para mixagem
-  double _musicVolume = 1.0;
-  double _soundVolume = 0.7;
-
+  // Mix de áudios ativos
+  final Map<String, AudioModel> _activeMix = {};
+  final Map<String, double> _mixVolumes = {};
+  
+  // Serviço de anúncios
+  AdService? _adService;
+  
+  // Getters para o player principal
   AudioModel? get currentAudio => _currentAudio;
-  AudioModel? get currentSound => _currentSound;
   bool get isPlaying => _isPlaying;
-  bool get isPaused => _isPaused;
-  bool get isMixMode => _isMixMode;
+  bool get isLoading => _isLoading;
   Duration get currentPosition => _currentPosition;
   Duration get totalDuration => _totalDuration;
-  bool get isLoading => _isLoading;
-  double get musicVolume => _musicVolume;
-  double get soundVolume => _soundVolume;
-
-  // Stream para posição (compatibilidade)
-  Stream<Duration> get positionStream => _service.positionStream;
+  
+  // Getters para mix
+  Map<String, AudioModel> get activeMix => Map.unmodifiable(_activeMix);
+  Map<String, double> get mixVolumes => Map.unmodifiable(_mixVolumes);
+  bool get hasMixActive => _activeMix.isNotEmpty;
+  int get mixCount => _activeMix.length;
 
   AudioProvider() {
-    _service.positionStream.listen((position) {
+    _initializeProvider();
+  }
+
+  /// Inicializa o provider e configura listeners
+  Future<void> _initializeProvider() async {
+    await _audioService.initialize();
+    _audioService.setMainPlayer(mainPlayerId);
+    _setupMainPlayerListeners();
+  }
+
+  /// Configura listeners para o player principal
+  void _setupMainPlayerListeners() {
+    // Position stream
+    _audioService.getPositionStream(mainPlayerId).listen((position) {
       _currentPosition = position;
       notifyListeners();
     });
     
-    _service.durationStream.listen((duration) {
+    // Duration stream
+    _audioService.getDurationStream(mainPlayerId).listen((duration) {
       _totalDuration = duration ?? Duration.zero;
       notifyListeners();
     });
 
-    // Escuta mudanças no estado do player
-    _service.playerStateStream.listen((playerState) {
+    // Player state stream
+    _audioService.getPlayerStateStream(mainPlayerId).listen((playerState) {
       _isPlaying = playerState.playing;
-      _isPaused = !playerState.playing && playerState.processingState != ProcessingState.idle;
       _isLoading = playerState.processingState == ProcessingState.loading ||
                    playerState.processingState == ProcessingState.buffering;
       notifyListeners();
     });
   }
 
+  /// Define o serviço de anúncios
   void setAdService(AdService adService) {
     _adService = adService;
     _adService?.loadRewardedAd();
   }
 
-  void _actuallyPlayAudio(AudioModel audio) async {
-    try {
-      _isLoading = true;
-      notifyListeners();
-      
-      // Se é o mesmo áudio e está pausado, apenas resume
-      if (_currentAudio?.url == audio.url && _isPaused) {
-        if (_isMixMode && _currentSound != null) {
-          _service.resumeMix();
-        } else {
-          _service.resumeMusic();
-        }
-      } else {
-        // Se é um novo áudio, carrega e toca
-        _currentAudio = audio;
-        _isPaused = false;
-        
-        if (_isMixMode && _currentSound != null) {
-          await _service.playMix(audio.url, _currentSound!.url);
-        } else {
-          await _service.loadMusic(audio.url);
-          await _service.playMusic();
-        }
-      }
-      
-      _isLoading = false;
-      notifyListeners();
-    } catch (e) {
-      _isLoading = false;
-      debugPrint("Erro ao reproduzir áudio: $e");
-      notifyListeners();
-    }
-  }
-
-  void playAudio(BuildContext context, AudioModel audio) async {
+  /// Reproduz áudio no player principal
+  Future<void> playMainAudio(BuildContext context, AudioModel audio) async {
     final paywall = Provider.of<PaywallProvider>(context, listen: false);
     _adService ??= Provider.of<AdService>(context, listen: false);
     await paywall.loadData();
 
     if (paywall.isPremium) {
-      _actuallyPlayAudio(audio);
+      await _actuallyPlayMainAudio(audio);
       return;
     }
 
     _adService?.showRewardedAd(
       onUserEarnedRewardCallback: () {
-        debugPrint("Usuário ganhou recompensa por assistir o anúncio antes de tocar a música.");
+        debugPrint("Usuário ganhou recompensa por assistir o anúncio");
       },
       onAdDismissed: () {
-        debugPrint("Anúncio dispensado, tocando música.");
-        _actuallyPlayAudio(audio);
+        _actuallyPlayMainAudio(audio);
       },
       onAdFailedToLoadOrShow: (error) {
-        debugPrint("Falha ao carregar/mostrar anúncio: $error. Tocando música diretamente.");
-        _actuallyPlayAudio(audio);
+        debugPrint("Falha no anúncio: $error. Tocando música diretamente.");
+        _actuallyPlayMainAudio(audio);
       },
     );
   }
 
-  void pauseAudio() {
-    if (_isMixMode) {
-      _service.pauseMix();
-    } else {
-      _service.pauseMusic();
-    }
-    _isPaused = true;
-    notifyListeners();
-  }
-
-  void resumeAudio() async {
-    if (_currentAudio != null) {
-      if (_isMixMode && _currentSound != null) {
-        _service.resumeMix();
-      } else {
-        _service.resumeMusic();
-      }
-      _isPaused = false;
-      notifyListeners();
-    }
-  }
-
-  void togglePlayPause(BuildContext context) {
-    if (_currentAudio == null) return;
-    
-    if (_isPlaying) {
-      pauseAudio();
-    } else if (_isPaused) {
-      resumeAudio();
-    } else {
-      playAudio(context, _currentAudio!);
-    }
-  }
-
-  void stopAudio() {
-    if (_isMixMode) {
-      _service.stopMix();
-    } else {
-      _service.stopMusic();
-    }
-    _isPlaying = false;
-    _isPaused = false;
-    _currentAudio = null;
-    _currentSound = null;
-    _isMixMode = false;
-    _currentPosition = Duration.zero;
-    _totalDuration = Duration.zero;
-    notifyListeners();
-  }
-
-  // Métodos para mixagem
-  void enableMixMode(AudioModel soundAudio) {
-    _currentSound = soundAudio;
-    _isMixMode = true;
-    notifyListeners();
-  }
-
-  void disableMixMode() {
-    if (_isMixMode) {
-      _service.stopSound();
-      _currentSound = null;
-      _isMixMode = false;
-      notifyListeners();
-    }
-  }
-
-  void playMix(BuildContext context, AudioModel musicAudio, AudioModel soundAudio) async {
-    _currentAudio = musicAudio;
-    _currentSound = soundAudio;
-    _isMixMode = true;
-    
-    final paywall = Provider.of<PaywallProvider>(context, listen: false);
-    await paywall.loadData();
-
-    if (paywall.isPremium) {
-      _actuallyPlayMix(musicAudio, soundAudio);
-      return;
-    }
-
-    _adService?.showRewardedAd(
-      onUserEarnedRewardCallback: () {
-        debugPrint("Usuário ganhou recompensa por assistir o anúncio antes de tocar o mix.");
-      },
-      onAdDismissed: () {
-        debugPrint("Anúncio dispensado, tocando mix.");
-        _actuallyPlayMix(musicAudio, soundAudio);
-      },
-      onAdFailedToLoadOrShow: (error) {
-        debugPrint("Falha ao carregar/mostrar anúncio: $error. Tocando mix diretamente.");
-        _actuallyPlayMix(musicAudio, soundAudio);
-      },
-    );
-  }
-
-  void _actuallyPlayMix(AudioModel musicAudio, AudioModel soundAudio) async {
+  /// Execução real da reprodução do áudio principal
+  Future<void> _actuallyPlayMainAudio(AudioModel audio) async {
     try {
       _isLoading = true;
       notifyListeners();
       
-      await _service.playMix(musicAudio.url, soundAudio.url);
+      // Se é o mesmo áudio e está pausado, apenas resume
+      if (_currentAudio?.url == audio.url && !_isPlaying) {
+        await _audioService.play(mainPlayerId);
+      } else {
+        // Carrega e toca novo áudio
+        _currentAudio = audio;
+        await _audioService.loadAudio(mainPlayerId, audio.url);
+        await _audioService.play(mainPlayerId);
+      }
       
       _isLoading = false;
       notifyListeners();
     } catch (e) {
       _isLoading = false;
-      debugPrint("Erro ao reproduzir mix: $e");
+      debugPrint("Erro ao reproduzir áudio principal: $e");
       notifyListeners();
     }
   }
 
-  // Controles de volume
-  void setMusicVolume(double volume) {
-    _musicVolume = volume.clamp(0.0, 1.0);
-    _service.setMusicVolume(_musicVolume);
+  /// Pausa o player principal
+  void pauseMainAudio() {
+    _audioService.pause(mainPlayerId);
     notifyListeners();
   }
 
-  void setSoundVolume(double volume) {
-    _soundVolume = volume.clamp(0.0, 1.0);
-    _service.setSoundVolume(_soundVolume);
+  /// Resume o player principal
+  Future<void> resumeMainAudio() async {
+    if (_currentAudio != null) {
+      await _audioService.play(mainPlayerId);
+      notifyListeners();
+    }
+  }
+
+  /// Toggle play/pause do player principal
+  void toggleMainPlayPause(BuildContext context) {
+    if (_currentAudio == null) return;
+    
+    if (_isPlaying) {
+      pauseMainAudio();
+    } else {
+      resumeMainAudio();
+    }
+  }
+
+  /// Para o player principal
+  void stopMainAudio() {
+    _audioService.stop(mainPlayerId);
+    _currentAudio = null;
+    _currentPosition = Duration.zero;
+    _totalDuration = Duration.zero;
     notifyListeners();
   }
 
-  void seek(Duration position) {
-    _service.seek(position);
+  /// Busca posição no player principal
+  Future<void> seekMainAudio(Duration position) async {
+    await _audioService.seek(mainPlayerId, position);
+  }
+
+  /// Define volume do player principal
+  Future<void> setMainVolume(double volume) async {
+    await _audioService.setVolume(mainPlayerId, volume);
+  }
+
+  // ========== FUNCIONALIDADES DE MIX ==========
+
+  /// Adiciona áudio ao mix
+  Future<void> addToMix(AudioModel audio, {double volume = 1.0}) async {
+    try {
+      final playerId = 'mix_${audio.id}';
+      
+      await _audioService.addToMix(playerId, audio.url, volume: volume);
+      
+      _activeMix[playerId] = audio;
+      _mixVolumes[playerId] = volume;
+      
+      notifyListeners();
+      debugPrint("Adicionado ao mix: ${audio.title}");
+    } catch (e) {
+      debugPrint("Erro ao adicionar ao mix: $e");
+    }
+  }
+
+  /// Remove áudio do mix
+  void removeFromMix(String audioId) {
+    final playerId = 'mix_$audioId';
+    
+    _audioService.removeFromMix(playerId);
+    _activeMix.remove(playerId);
+    _mixVolumes.remove(playerId);
+    
+    notifyListeners();
+    debugPrint("Removido do mix: $audioId");
+  }
+
+  /// Limpa todo o mix
+  void clearMix() {
+    for (final playerId in _activeMix.keys.toList()) {
+      _audioService.removeFromMix(playerId);
+    }
+    
+    _activeMix.clear();
+    _mixVolumes.clear();
+    
+    notifyListeners();
+    debugPrint("Mix limpo");
+  }
+
+  /// Define volume de um áudio específico no mix
+  Future<void> setMixAudioVolume(String audioId, double volume) async {
+    final playerId = 'mix_$audioId';
+    
+    if (_activeMix.containsKey(playerId)) {
+      await _audioService.setVolume(playerId, volume);
+      _mixVolumes[playerId] = volume;
+      notifyListeners();
+    }
+  }
+
+  /// Pausa todo o mix
+  void pauseMix() {
+    for (final playerId in _activeMix.keys) {
+      _audioService.pause(playerId);
+    }
+    notifyListeners();
+  }
+
+  /// Resume todo o mix
+  Future<void> resumeMix() async {
+    for (final playerId in _activeMix.keys) {
+      await _audioService.play(playerId);
+    }
+    notifyListeners();
+  }
+
+  /// Verifica se um áudio está no mix
+  bool isInMix(String audioId) {
+    return _activeMix.containsKey('mix_$audioId');
+  }
+
+  /// Obtém volume de um áudio no mix
+  double getMixAudioVolume(String audioId) {
+    return _mixVolumes['mix_$audioId'] ?? 1.0;
+  }
+
+  // ========== FUNCIONALIDADES AVANÇADAS ==========
+
+  /// Cria um mix predefinido
+  Future<void> createPresetMix(List<AudioModel> audios, {Map<String, double>? volumes}) async {
+    clearMix();
+    
+    for (int i = 0; i < audios.length; i++) {
+      final audio = audios[i];
+      final volume = volumes?[audio.id] ?? 1.0;
+      await addToMix(audio, volume: volume);
+    }
+    
+    debugPrint("Mix predefinido criado com ${audios.length} áudios");
+  }
+
+  /// Para todos os áudios (principal + mix)
+  void stopAll() {
+    _audioService.stopAll();
+    _currentAudio = null;
+    _activeMix.clear();
+    _mixVolumes.clear();
+    _currentPosition = Duration.zero;
+    _totalDuration = Duration.zero;
+    notifyListeners();
+  }
+
+  /// Pausa todos os áudios (principal + mix)
+  void pauseAll() {
+    _audioService.pauseAll();
+    notifyListeners();
+  }
+
+  /// Define volume global para todos os players
+  Future<void> setGlobalVolume(double volume) async {
+    await _audioService.setVolumeAll(volume);
+  }
+
+  /// Obtém lista de players ativos
+  List<String> getActivePlayers() {
+    return _audioService.getActivePlayers();
+  }
+
+  /// Verifica se há algum áudio tocando
+  bool get hasAnyAudioPlaying {
+    return _audioService.hasPlayingAudio;
+  }
+
+  // ========== PREPARAÇÃO PARA FUNCIONALIDADES FUTURAS ==========
+
+  /// Habilita reprodução em segundo plano (preparação futura)
+  Future<void> enableBackgroundPlayback() async {
+    await _audioService.enableBackgroundPlayback();
+  }
+
+  /// Habilita cache de áudio (preparação futura)
+  Future<void> enableCaching() async {
+    await _audioService.enableCaching();
   }
 
   @override
   void dispose() {
-    _service.dispose();
+    _audioService.dispose();
     super.dispose();
   }
-}
 
+  // ========== MÉTODOS DE COMPATIBILIDADE ==========
+  
+  /// Métodos para manter compatibilidade com o provider antigo
+  void playAudio(BuildContext context, AudioModel audio) {
+    playMainAudio(context, audio);
+  }
+
+  void pauseAudio() {
+    pauseMainAudio();
+  }
+
+  void resumeAudio() {
+    resumeMainAudio();
+  }
+
+  void togglePlayPause(BuildContext context) {
+    toggleMainPlayPause(context);
+  }
+
+  void stopAudio() {
+    stopMainAudio();
+  }
+
+  void seek(Duration position) {
+    seekMainAudio(position);
+  }
+}

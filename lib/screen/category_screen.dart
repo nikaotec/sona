@@ -612,7 +612,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
           AudioModel(
             id: '13',
             title: 'Piano Relaxante',
-            url: 'https://example.com/piano.mp3',
+            url: 'assets/music/instrumental/piano.mp3',
             category: 'Instrumental',
             duration: const Duration(minutes: 12),
             isPremium: false,
