@@ -1,66 +1,396 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
-import 'package:sona/provider/enhanced_audio_provider.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import 'package:sona/widgtes/mix_control_widget.dart';
+import 'package:sona/components/circular_music_visualizer.dart';
+import 'package:sona/components/visualizer_style_manager.dart';
+import 'package:sona/provider/audio_provider.dart';
+import 'package:sona/components/banner_ad_widget.dart';
+import 'package:sona/provider/paywall_provider.dart';
 
-/// Tela de player aprimorada com suporte para mix de áudios
 class PlayerScreen extends StatefulWidget {
-  const PlayerScreen({super.key});
+  final String? heroTag;
+
+  const PlayerScreen({super.key, this.heroTag});
 
   @override
   State<PlayerScreen> createState() => _PlayerScreenState();
 }
 
-class _PlayerScreenState extends State<PlayerScreen> {
-  bool _showMixControls = false;
+class _PlayerScreenState extends State<PlayerScreen>  with TickerProviderStateMixin {
+  late AnimationController _rotationController;
+  late AnimationController _pulseController;
+  late AnimationController _slideController;
+  late Animation<double> _rotationAnimation;
+  late Animation<double> _pulseAnimation;
+  late Animation<Offset> _slideAnimation;
+  
+  // Variáveis para o visualizador
+  VisualizerStyleConfig? _currentVisualizerStyle;
+  bool _showVisualizer = true;
+
+  @override
+  void initState() {
+    super.initState();
+    
+    // Controlador para rotação do ícone de música
+    _rotationController = AnimationController(
+      duration: const Duration(seconds: 20),
+      vsync: this,
+    );
+    
+    // Controlador para pulsação do botão play
+    _pulseController = AnimationController(
+      duration: const Duration(milliseconds: 1000),
+      vsync: this,
+    );
+    
+    // Controlador para slide dos controles
+    _slideController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+
+    _rotationAnimation = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(_rotationController);
+
+    _pulseAnimation = Tween<double>(
+      begin: 1.0,
+      end: 1.1,
+    ).animate(CurvedAnimation(
+      parent: _pulseController,
+      curve: Curves.easeInOut,
+    ));
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 1),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _slideController,
+      curve: Curves.easeOutCubic,
+    ));
+
+    // Iniciar animações
+    _slideController.forward();
+    
+    // Escutar mudanças no provider de áudio
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final audioProvider = Provider.of<AudioProvider>(context, listen: false);
+      if (audioProvider.isPlaying) {
+        _rotationController.repeat();
+        _pulseController.repeat(reverse: true);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _rotationController.dispose();
+    _pulseController.dispose();
+    _slideController.dispose();
+    super.dispose();
+  }
+
+  String _formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    String twoDigitMinutes = twoDigits(duration.inMinutes.remainder(60));
+    String twoDigitSeconds = twoDigits(duration.inSeconds.remainder(60));
+    return '$twoDigitMinutes:$twoDigitSeconds';
+  }
+
+  void _generateNewVisualizerStyle(dynamic audio) {
+    if (audio != null) {
+      _currentVisualizerStyle = VisualizerStyleManager.getStyleForMusic(
+        category: audio.category,
+        title: audio.title,
+      );
+    }
+  }
+
+  void _showAddToMixSnackBar(bool isAdded) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          isAdded ? 'Música adicionada ao mix!' : 'Música removida do mix!',
+          style: const TextStyle(color: Colors.white),
+        ),
+        backgroundColor: isAdded ? Colors.green : Colors.orange,
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<EnhancedAudioProvider>(
+    return Consumer<AudioProvider>(
       builder: (context, audioProvider, child) {
+        final paywallProvider = Provider.of<PaywallProvider>(context);
+        final audio = audioProvider.currentAudio;
+
+        // Gerar novo estilo de visualizador se necessário
+        if (audio != null && _currentVisualizerStyle == null) {
+          _generateNewVisualizerStyle(audio);
+        }
+
+        // Controlar animações baseado no estado de reprodução
+        if (audioProvider.isPlaying) {
+          if (!_rotationController.isAnimating) {
+            _rotationController.repeat();
+          }
+          if (!_pulseController.isAnimating) {
+            _pulseController.repeat(reverse: true);
+          }
+        } else {
+          _rotationController.stop();
+          _pulseController.stop();
+        }
+
+        if (audio == null) {
+          return const Scaffold(
+            backgroundColor: Color(0xFF1A1A2E),
+            body: Center(
+              child: Text(
+                'Nenhum áudio selecionado',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          );
+        }
+
+        final screenHeight = MediaQuery.of(context).size.height;
+        final screenWidth = MediaQuery.of(context).size.width;
+
         return Scaffold(
           backgroundColor: const Color(0xFF1A1A2E),
-          body: SafeArea(
-            child: Column(
+          body: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFF4A5568),
+                  Color(0xFF2D3748),
+                  Color(0xFF1A1A2E),
+                ],
+              ),
+            ),
+            child: SafeArea(
+              child: Column(
+                children: [
+                  // Header animado
+                  _buildAnimatedHeader(screenWidth, audioProvider, audio),
+                  
+                  // Banner de anúncio para usuários não premium
+                  if (!paywallProvider.isPremium)
+                    const BannerAdWidget()
+                        .animate()
+                        .fadeIn(delay: 300.ms)
+                        .slideY(begin: -0.3, end: 0),
+                  
+                  // Imagem principal com Hero animation e rotação
+                  Expanded(
+                    flex: 3,
+                    child: _buildAnimatedMusicIcon(screenWidth),
+                  ),
+                  
+                  // Informações da música e controles animados
+                  Expanded(
+                    flex: 2,
+                    child: SlideTransition(
+                      position: _slideAnimation,
+                      child: _buildAnimatedControls(
+                        screenWidth,
+                        screenHeight,
+                        audioProvider,
+                        audio,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildAnimatedHeader(double screenWidth, AudioProvider audioProvider, dynamic audio) {
+    return Padding(
+      padding: EdgeInsets.all(screenWidth * 0.05),
+      child: Row(
+        children: [
+          AnimatedBackButton(
+            onPressed: () => context.go('/categories'),
+          ),
+          Expanded(
+            child: Text(
+              'MindWave',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: screenWidth * 0.05,
+                fontWeight: FontWeight.w600,
+              ),
+            ).animate().fadeIn(delay: 200.ms).slideY(begin: -0.5, end: 0),
+          ),
+          // Botão para adicionar/remover do mix
+          AnimatedMixButton(
+            isInMix: audioProvider.isInMix(audio),
+            onPressed: () {
+              if (audioProvider.isInMix(audio)) {
+                audioProvider.removeFromMix(audio);
+                _showAddToMixSnackBar(false);
+              } else {
+                audioProvider.addToMix(audio);
+                _showAddToMixSnackBar(true);
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAnimatedMusicIcon(double screenWidth) {
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: screenWidth * 0.1),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Visualizador circular de fundo
+          if (_showVisualizer && _currentVisualizerStyle != null)
+            CircularMusicVisualizer(
+              size: screenWidth * 0.8,
+              isPlaying: Provider.of<AudioProvider>(context, listen: false).isPlaying,
+              style: _currentVisualizerStyle!.style,
+              primaryColor: _currentVisualizerStyle!.primaryColor,
+              secondaryColor: _currentVisualizerStyle!.secondaryColor,
+              intensity: VisualizerStyleManager.getIntensityForMusic(
+                Provider.of<AudioProvider>(context, listen: false).currentAudio?.category,
+                Provider.of<AudioProvider>(context, listen: false).currentAudio?.title,
+              ),
+            ),
+          
+          // Botão para alternar visualizador
+          Positioned(
+            top: 10,
+            right: 10,
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  if (_showVisualizer) {
+                    _generateNewVisualizerStyle(
+                      Provider.of<AudioProvider>(context, listen: false).currentAudio
+                    );
+                  } else {
+                    _showVisualizer = !_showVisualizer;
+                  }
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Icon(
+                  _showVisualizer ? Icons.refresh : Icons.visibility,
+                  color: Colors.white.withOpacity(0.8),
+                  size: 20,
+                ),
+              ),
+            ),
+          ),
+          
+          // Indicador do estilo atual
+          if (_showVisualizer && _currentVisualizerStyle != null)
+            Positioned(
+              bottom: 10,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Text(
+                  _currentVisualizerStyle!.name,
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.9),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    ).animate().scale(delay: 400.ms, duration: 800.ms, curve: Curves.elasticOut);
+  }
+
+  Widget _buildRotatingIcon(double screenWidth) {
+    return AnimatedBuilder(
+      animation: _rotationAnimation,
+      builder: (context, child) {
+        return Transform.rotate(
+          angle: _rotationAnimation.value * 2 * 3.14159,
+          child: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFF6B73FF),
+                  Color(0xFF9644FF),
+                ],
+              ),
+            ),
+            child: Stack(
+              alignment: Alignment.center,
               children: [
-                // AppBar customizada
-                _buildCustomAppBar(audioProvider),
-                
-                // Conteúdo principal
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      children: [
-                        // Artwork principal
-                        _buildMainArtwork(audioProvider),
-                        
-                        const SizedBox(height: 32),
-                        
-                        // Informações da música
-                        _buildTrackInfo(audioProvider),
-                        
-                        const SizedBox(height: 32),
-                        
-                        // Controles de reprodução
-                        _buildPlaybackControls(audioProvider),
-                        
-                        const SizedBox(height: 24),
-                        
-                        // Barra de progresso
-                        _buildProgressSection(audioProvider),
-                        
-                        const SizedBox(height: 32),
-                        
-                        // Controles de mix
-                        if (audioProvider.hasMixActive)
-                          _buildMixSection(audioProvider),
-                      ],
+                // Círculo interno para simular um disco
+                Container(
+                  width: screenWidth * 0.15,
+                  height: screenWidth * 0.15,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1A1A2E),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.3),
+                      width: 2,
                     ),
                   ),
                 ),
+                // Ícone principal
+                Icon(
+                  Icons.self_improvement,
+                  size: screenWidth * 0.3,
+                  color: Colors.white,
+                ),
+                // Pequenos pontos para simular reflexos
+                ...List.generate(8, (index) {
+                  final angle = (index * 45) * 3.14159 / 180;
+                  return Transform.translate(
+                    offset: Offset(
+                      (screenWidth * 0.25) * 0.8 * (angle / 6.28),
+                      (screenWidth * 0.25) * 0.8 * (angle / 6.28),
+                    ),
+                    child: Container(
+                      width: 4,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.6),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  );
+                }),
               ],
             ),
           ),
@@ -69,315 +399,414 @@ class _PlayerScreenState extends State<PlayerScreen> {
     );
   }
 
-  Widget _buildCustomAppBar(EnhancedAudioProvider audioProvider) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      child: Row(
+  Widget _buildAnimatedControls(
+    double screenWidth,
+    double screenHeight,
+    AudioProvider audioProvider,
+    dynamic audio,
+  ) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.1),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          IconButton(
-            icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 28),
-            onPressed: () => context.pop(),
-          ).animate().fadeIn().scale(),
+          // Categoria
+          Text(
+            audio.category,
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: screenWidth * 0.04,
+              fontWeight: FontWeight.w400,
+            ),
+          ).animate().fadeIn(delay: 600.ms).slideY(begin: 0.3, end: 0),
           
-          const Spacer(),
-          
-          const Text(
-            'Player',
+          // Título da música
+          Text(
+            audio.title,
+            textAlign: TextAlign.center,
             style: TextStyle(
               color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
+              fontSize: screenWidth * 0.08,
+              fontWeight: FontWeight.bold,
             ),
-          ).animate().fadeIn(delay: 100.ms),
+          ).animate().fadeIn(delay: 700.ms).slideY(begin: 0.3, end: 0),
           
-          const Spacer(),
+          // Barra de progresso animada
+          _buildAnimatedProgressBar(screenWidth, screenHeight, audioProvider),
           
-          // Botão de mix
-          if (audioProvider.hasMixActive)
-            IconButton(
-              icon: Icon(
-                _showMixControls ? Icons.queue_music : Icons.queue_music_outlined,
-                color: _showMixControls ? const Color(0xFF6C63FF) : Colors.white,
-                size: 24,
-              ),
-              onPressed: () {
-                setState(() {
-                  _showMixControls = !_showMixControls;
-                });
-              },
-            ).animate().fadeIn(delay: 200.ms).scale()
-          else
-            const SizedBox(width: 48),
+          // Controles de reprodução animados
+          _buildAnimatedPlayControls(screenWidth, audioProvider),
         ],
       ),
     );
   }
 
-  Widget _buildMainArtwork(EnhancedAudioProvider audioProvider) {
-    return Hero(
-      tag: 'player_artwork',
-      child: Container(
-        width: 280,
-        height: 280,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              const Color(0xFF6C63FF).withOpacity(0.3),
-              const Color(0xFF9644FF).withOpacity(0.3),
-            ],
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF6C63FF).withOpacity(0.3),
-              blurRadius: 30,
-              offset: const Offset(0, 15),
-            ),
-          ],
-        ),
-        child: Stack(
-          children: [
-            // Background pattern
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Colors.white.withOpacity(0.1),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-            
-            // Main icon
-            Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    audioProvider.currentAudio != null 
-                        ? Icons.music_note 
-                        : Icons.queue_music,
-                    color: Colors.white,
-                    size: 80,
-                  ).animate().scale(curve: Curves.elasticOut),
-                  
-                  if (audioProvider.hasMixActive) ...[
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        'Mix: ${audioProvider.mixCount}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.3, end: 0),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    ).animate().scale(curve: Curves.easeOutBack);
-  }
-
-  Widget _buildTrackInfo(EnhancedAudioProvider audioProvider) {
+  Widget _buildAnimatedProgressBar(
+    double screenWidth,
+    double screenHeight,
+    AudioProvider audioProvider,
+  ) {
     return Column(
       children: [
-        Text(
-          audioProvider.currentAudio?.title ?? 'Nenhuma música selecionada',
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-          ),
-          textAlign: TextAlign.center,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.3, end: 0),
-        
-        const SizedBox(height: 8),
-        
-        Text(
-          audioProvider.currentAudio?.category ?? 
-          (audioProvider.hasMixActive 
-              ? '${audioProvider.mixCount} áudio${audioProvider.mixCount > 1 ? 's' : ''} no mix'
-              : 'Selecione uma música para começar'),
-          style: TextStyle(
-            color: Colors.white.withOpacity(0.7),
-            fontSize: 16,
-          ),
-          textAlign: TextAlign.center,
-        ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.3, end: 0),
-      ],
-    );
-  }
-
-  Widget _buildPlaybackControls(EnhancedAudioProvider audioProvider) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        // Botão anterior (placeholder)
-        IconButton(
-          icon: const Icon(Icons.skip_previous, color: Colors.white70, size: 32),
-          onPressed: () {
-            // Implementação futura para música anterior
-          },
-        ).animate().fadeIn(delay: 400.ms).scale(),
-        
-        // Botão play/pause principal
         Container(
-          width: 64,
-          height: 64,
-          decoration: const BoxDecoration(
-            color: Color(0xFF6C63FF),
-            shape: BoxShape.circle,
-          ),
-          child: IconButton(
-            icon: Icon(
-              audioProvider.isLoading
-                  ? Icons.hourglass_empty
-                  : (audioProvider.isPlaying ? Icons.pause : Icons.play_arrow),
-              color: Colors.white,
-              size: 32,
+          padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.02),
+          child: SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              activeTrackColor: const Color(0xFF6B73FF),
+              inactiveTrackColor: Colors.white24,
+              thumbColor: const Color(0xFF6B73FF),
+              thumbShape: RoundSliderThumbShape(
+                enabledThumbRadius: screenWidth * 0.02,
+              ),
+              trackHeight: screenHeight * 0.005,
+              overlayShape: SliderComponentShape.noOverlay,
             ),
-            onPressed: audioProvider.isLoading || audioProvider.currentAudio == null
-                ? null
-                : () {
-                    audioProvider.toggleMainPlayPause(context);
-                  },
-          ),
-        ).animate().fadeIn(delay: 500.ms).scale(curve: Curves.elasticOut),
-        
-        // Botão próximo (placeholder)
-        IconButton(
-          icon: const Icon(Icons.skip_next, color: Colors.white70, size: 32),
-          onPressed: () {
-            // Implementação futura para próxima música
-          },
-        ).animate().fadeIn(delay: 600.ms).scale(),
-      ],
-    );
-  }
-
-  Widget _buildProgressSection(EnhancedAudioProvider audioProvider) {
-    if (audioProvider.currentAudio == null) {
-      return const SizedBox.shrink();
-    }
-
-    return Column(
-      children: [
-        SliderTheme(
-          data: SliderTheme.of(context).copyWith(
-            activeTrackColor: const Color(0xFF6C63FF),
-            inactiveTrackColor: Colors.white24,
-            thumbColor: const Color(0xFF6C63FF),
-            thumbShape: const RoundSliderThumbShape(
-              enabledThumbRadius: 8,
+            child: Slider(
+              value: audioProvider.currentPosition.inSeconds.toDouble().clamp(
+                0.0, 
+                audioProvider.totalDuration.inSeconds.toDouble()
+              ),
+              max: audioProvider.totalDuration.inSeconds.toDouble() > 0 
+                  ? audioProvider.totalDuration.inSeconds.toDouble() 
+                  : 1.0,
+              onChanged: (value) {
+                audioProvider.seek(Duration(seconds: value.toInt()));
+              },
             ),
-            trackHeight: 4,
-            overlayColor: const Color(0xFF6C63FF).withOpacity(0.2),
-          ),
-          child: Slider(
-            value: audioProvider.currentPosition.inSeconds.toDouble().clamp(
-              0.0, 
-              audioProvider.totalDuration.inSeconds.toDouble()
-            ),
-            max: audioProvider.totalDuration.inSeconds.toDouble() > 0 
-                ? audioProvider.totalDuration.inSeconds.toDouble() 
-                : 1.0,
-            onChanged: (value) {
-              audioProvider.seekMainAudio(Duration(seconds: value.toInt()));
-            },
           ),
         ),
         
-        const SizedBox(height: 8),
-        
+        // Tempos
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 _formatDuration(audioProvider.currentPosition),
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white70,
-                  fontSize: 14,
+                  fontSize: screenWidth * 0.035,
                 ),
               ),
               Text(
-                _formatDuration(audioProvider.totalDuration),
-                style: const TextStyle(
+                '-${_formatDuration(audioProvider.totalDuration - audioProvider.currentPosition)}',
+                style: TextStyle(
                   color: Colors.white70,
-                  fontSize: 14,
+                  fontSize: screenWidth * 0.035,
                 ),
               ),
             ],
           ),
         ),
       ],
-    ).animate().fadeIn(delay: 700.ms).slideY(begin: 0.3, end: 0);
+    ).animate().fadeIn(delay: 800.ms).slideY(begin: 0.3, end: 0);
   }
 
-  Widget _buildMixSection(EnhancedAudioProvider audioProvider) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildAnimatedPlayControls(
+    double screenWidth,
+    AudioProvider audioProvider,
+  ) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Row(
-          children: [
-            const Text(
-              'Controles de Mix',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
+        // Botão anterior
+        AnimatedControlButton(
+          icon: Icons.skip_previous,
+          size: screenWidth * 0.1,
+          onPressed: () {
+            // TODO: Implementar música anterior
+          },
+          delay: 900.ms,
+        ),
+        
+        SizedBox(width: screenWidth * 0.05),
+        
+        // Botão play/pause principal com pulsação
+        AnimatedBuilder(
+          animation: _pulseAnimation,
+          builder: (context, child) {
+            return Transform.scale(
+              scale: audioProvider.isPlaying ? _pulseAnimation.value : 1.0,
+              child: Container(
+                width: screenWidth * 0.2,
+                height: screenWidth * 0.2,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF6C63FF).withOpacity(0.3),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: audioProvider.isLoading
+                    ? const CircularProgressIndicator(
+                        color: Color(0xFF1A1A2E),
+                      )
+                    : IconButton(
+                        icon: Icon(
+                          audioProvider.isPlaying ? Icons.pause : Icons.play_arrow,
+                          size: screenWidth * 0.1,
+                          color: const Color(0xFF1A1A2E),
+                        ),
+                        onPressed: () {
+                          audioProvider.togglePlayPause(context);
+                        },
+                      ),
               ),
-            ),
-            const Spacer(),
-            Switch(
-              value: _showMixControls,
-              onChanged: (value) {
-                setState(() {
-                  _showMixControls = value;
-                });
-              },
-              activeColor: const Color(0xFF6C63FF),
-            ),
-          ],
-        ).animate().fadeIn(delay: 800.ms).slideX(begin: -0.3, end: 0),
+            );
+          },
+        ).animate().scale(delay: 1000.ms, duration: 600.ms, curve: Curves.elasticOut),
         
-        const SizedBox(height: 16),
+        SizedBox(width: screenWidth * 0.05),
         
-        if (_showMixControls)
-          MixControlWidget(
-            onClose: () {
-              setState(() {
-                _showMixControls = false;
-              });
-            },
-          ).animate().slideY(begin: 0.3, end: 0).fadeIn(),
+        // Botão próximo
+        AnimatedControlButton(
+          icon: Icons.skip_next,
+          size: screenWidth * 0.1,
+          onPressed: () {
+            // TODO: Implementar próxima música
+          },
+          delay: 1100.ms,
+        ),
       ],
     );
   }
+}
 
-  String _formatDuration(Duration duration) {
-    String twoDigits(int n) => n.toString().padLeft(2, '0');
-    String twoDigitMinutes = twoDigits(duration.inMinutes.remainder(60));
-    String twoDigitSeconds = twoDigits(duration.inSeconds.remainder(60));
-    return '$twoDigitMinutes:$twoDigitSeconds';
+// Widget personalizado para botão de voltar animado
+class AnimatedBackButton extends StatefulWidget {
+  final VoidCallback onPressed;
+
+  const AnimatedBackButton({
+    super.key,
+    required this.onPressed,
+  });
+
+  @override
+  State<AnimatedBackButton> createState() => _AnimatedBackButtonState();
+}
+
+class _AnimatedBackButtonState extends State<AnimatedBackButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 150),
+      vsync: this,
+    );
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.9,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOut,
+    ));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => _controller.forward(),
+      onTapUp: (_) => _controller.reverse(),
+      onTapCancel: () => _controller.reverse(),
+      onTap: widget.onPressed,
+      child: AnimatedBuilder(
+        animation: _scaleAnimation,
+        builder: (context, child) {
+          return Transform.scale(
+            scale: _scaleAnimation.value,
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.2),
+                ),
+              ),
+              child: const Icon(
+                Icons.arrow_back,
+                color: Colors.white,
+              ),
+            ),
+          );
+        },
+      ),
+    ).animate().fadeIn(delay: 100.ms).slideX(begin: -0.3, end: 0);
+  }
+}
+
+// Widget personalizado para botão de mix animado
+class AnimatedMixButton extends StatefulWidget {
+  final bool isInMix;
+  final VoidCallback onPressed;
+
+  const AnimatedMixButton({
+    super.key,
+    required this.isInMix,
+    required this.onPressed,
+  });
+
+  @override
+  State<AnimatedMixButton> createState() => _AnimatedMixButtonState();
+}
+
+class _AnimatedMixButtonState extends State<AnimatedMixButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 150),
+      vsync: this,
+    );
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.9,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOut,
+    ));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => _controller.forward(),
+      onTapUp: (_) => _controller.reverse(),
+      onTapCancel: () => _controller.reverse(),
+      onTap: widget.onPressed,
+      child: AnimatedBuilder(
+        animation: _scaleAnimation,
+        builder: (context, child) {
+          return Transform.scale(
+            scale: _scaleAnimation.value,
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: widget.isInMix 
+                    ? const Color(0xFF6B73FF).withOpacity(0.2)
+                    : Colors.white.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: widget.isInMix 
+                      ? const Color(0xFF6B73FF)
+                      : Colors.white.withOpacity(0.2),
+                ),
+              ),
+              child: Icon(
+                widget.isInMix ? Icons.playlist_add_check : Icons.playlist_add,
+                color: widget.isInMix 
+                    ? const Color(0xFF6B73FF)
+                    : Colors.white,
+              ),
+            ),
+          );
+        },
+      ),
+    ).animate().fadeIn(delay: 100.ms).slideX(begin: 0.3, end: 0);
+  }
+}
+
+// Widget personalizado para botões de controle animados
+class AnimatedControlButton extends StatefulWidget {
+  final IconData icon;
+  final double size;
+  final VoidCallback onPressed;
+  final Duration delay;
+
+  const AnimatedControlButton({
+    super.key,
+    required this.icon,
+    required this.size,
+    required this.onPressed,
+    required this.delay,
+  });
+
+  @override
+  State<AnimatedControlButton> createState() => _AnimatedControlButtonState();
+}
+
+class _AnimatedControlButtonState extends State<AnimatedControlButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 150),
+      vsync: this,
+    );
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.9,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOut,
+    ));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => _controller.forward(),
+      onTapUp: (_) => _controller.reverse(),
+      onTapCancel: () => _controller.reverse(),
+      onTap: widget.onPressed,
+      child: AnimatedBuilder(
+        animation: _scaleAnimation,
+        builder: (context, child) {
+          return Transform.scale(
+            scale: _scaleAnimation.value,
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.1),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.2),
+                ),
+              ),
+              child: Icon(
+                widget.icon,
+                size: widget.size,
+                color: Colors.white,
+              ),
+            ),
+          );
+        },
+      ),
+    ).animate().fadeIn(delay: widget.delay).scale(curve: Curves.elasticOut);
   }
 }

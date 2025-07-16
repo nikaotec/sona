@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -18,8 +19,19 @@ class _SplashScreenState extends State<SplashScreen> {
 
   _navigateToNextScreen() async {
     await Future.delayed(const Duration(seconds: 3)); // Tempo de exibição da splash screen
+    
     if (mounted) {
-      context.go('/onboarding'); // Navega para a tela de onboarding
+      // Verificar se é a primeira vez que o app está sendo executado
+      final prefs = await SharedPreferences.getInstance();
+      final onboardingCompleted = prefs.getBool("onboarding_completed") ?? false;
+      
+      if (onboardingCompleted) {
+        // Se o onboarding já foi completado, vai direto para as categorias
+        context.go('/categories');
+      } else {
+        // Se é a primeira vez, vai para o onboarding
+        context.go('/onboarding');
+      }
     }
   }
 
@@ -106,4 +118,3 @@ class _SplashScreenState extends State<SplashScreen> {
     );
   }
 }
-
