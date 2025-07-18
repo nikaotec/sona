@@ -18,12 +18,14 @@ class CategoryMusicListScreen extends StatefulWidget {
   final String categoryName;
   final List<AudioModel> audios;
   final String? heroTag;
+  final String? mixId; // Para adicionar músicas a um mix específico
 
   const CategoryMusicListScreen({
     super.key,
     required this.categoryName,
     required this.audios,
     this.heroTag,
+    this.mixId,
   });
 
   @override
@@ -78,7 +80,7 @@ class _CategoryMusicListScreenState extends State<CategoryMusicListScreen>  with
 
   void _loadBannerAd() {
     _bannerAd = BannerAd(
-      adUnitId: 'ca-app-pub-3940256099942544/9214589741', // Test ID
+      adUnitId: 'ca-app-pub-3940256099942544/6300978111', // Test ID
       request: const AdRequest(),
       size: AdSize.banner,
       listener: BannerAdListener(
@@ -88,12 +90,9 @@ class _CategoryMusicListScreenState extends State<CategoryMusicListScreen>  with
           });
         },
         onAdFailedToLoad: (ad, err) {
-          
-          debugPrint("Erro ao carregar BannerAd: $err");
           ad.dispose();
         },
       ),
-    
     );
 
     _bannerAd?.load();
@@ -101,7 +100,7 @@ class _CategoryMusicListScreenState extends State<CategoryMusicListScreen>  with
 
   void _loadInterstitialAd() {
     InterstitialAd.load(
-      adUnitId: 'ca-app-pub-3940256099942544/5354046379', // Test ID
+      adUnitId: 'ca-app-pub-3940256099942544/1033173712', // Test ID
       request: const AdRequest(),
       adLoadCallback: InterstitialAdLoadCallback(
         onAdLoaded: (InterstitialAd ad) {
@@ -121,9 +120,6 @@ class _CategoryMusicListScreenState extends State<CategoryMusicListScreen>  with
           );
         },
         onAdFailedToLoad: (LoadAdError error) {
-          _isInterstitialAdReady = false;
-          _interstitialAd = null;
-           debugPrint("Erro ao carregar InterstitialAd: $error");
         },
       ),
     );

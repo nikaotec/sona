@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:sona/model/audio_model.dart';
 import 'package:sona/provider/subscription_provider.dart';
 import 'package:sona/provider/user_data_provider.dart';
+import 'package:sona/provider/mix_manager_provider.dart';
 import 'package:sona/widgtes/mini_player_widget.dart';
 
 class CategoryScreen extends StatefulWidget {
@@ -51,8 +52,8 @@ class _CategoryScreenState extends State<CategoryScreen> {
           ).animate().fadeIn(delay: 200.ms).scale(),
         ],
       ),
-      body: Consumer2<SubscriptionProvider, UserDataProvider>(
-        builder: (context, subscriptionProvider, userDataProvider, child) {
+      body: Consumer3<SubscriptionProvider, UserDataProvider, MixManagerProvider>(
+        builder: (context, subscriptionProvider, userDataProvider, mixManager, child) {
           final categories = _getOrderedCategories(
             userDataProvider.preferredCategory,
           );
@@ -75,6 +76,12 @@ class _CategoryScreenState extends State<CategoryScreen> {
                       .fadeIn(delay: 300.ms)
                       .slideY(begin: 0.3, end: 0),
                   const SizedBox(height: 24),
+                ],
+
+                // Seção Seus Mixes (se houver mixes)
+                if (mixManager.hasMixes) ...[
+                  _buildYourMixesSection(mixManager),
+                  const SizedBox(height: 32),
                 ],
 
                 // Categoria recomendada (se houver)
@@ -132,6 +139,311 @@ class _CategoryScreenState extends State<CategoryScreen> {
       bottomSheet: const MiniPlayerWidget(
         showOnlyWhenPlaying: true,
         margin: EdgeInsets.all(16),
+      ),
+    );
+  }
+
+  Widget _buildYourMixesSection(MixManagerProvider mixManager) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(
+              Icons.queue_music,
+              color: Color(0xFF6C63FF),
+              size: 24,
+            ),
+            const SizedBox(width: 8),
+            const Expanded(
+              child: Text(
+                '🎧 Seus Mixes',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            TextButton.icon(
+              onPressed: () => _showCreateMixDialog(mixManager),
+              icon: const Icon(
+                Icons.add,
+                color: Color(0xFF6C63FF),
+                size: 18,
+              ),
+              label: const Text(
+                'Criar',
+                style: TextStyle(
+                  color: Color(0xFF6C63FF),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ).animate().fadeIn(delay: 250.ms).slideX(begin: -0.3, end: 0),
+
+        const SizedBox(height: 16),
+
+        // Lista horizontal de mixes
+        SizedBox(
+          height: 140,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: mixManager.mixes.length + 1, // +1 para o botão de criar
+            itemBuilder: (context, index) {
+              if (index == mixManager.mixes.length) {
+                // Botão de criar novo mix
+                return _buildCreateMixCard(mixManager);
+              }
+
+              final mix = mixManager.mixes[index];
+              return _buildMixCard(mix, index);
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMixCard(dynamic mix, int index) {
+    return Container(
+      width: 160,
+      margin: const EdgeInsets.only(right: 12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            const Color(0xFF6C63FF).withOpacity(0.8),
+            const Color(0xFF9644FF).withOpacity(0.8),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF6C63FF).withOpacity(0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () {
+            context.go('/mix_edit/${mix.id}');
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.queue_music,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                    const Spacer(),
+                    if (mix.audios.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          '${mix.audios.length}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Text(
+                        mix.name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        mix.audios.isEmpty 
+                            ? 'Vazio' 
+                            : '${mix.audios.length} ${mix.audios.length == 1 ? 'música' : 'músicas'}',
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ).animate(delay: (300 + index * 100).ms).fadeIn().slideX(begin: 0.3, end: 0);
+  }
+
+  Widget _buildCreateMixCard(MixManagerProvider mixManager) {
+    return Container(
+      width: 160,
+      margin: const EdgeInsets.only(right: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2A2A3E),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFF6C63FF).withOpacity(0.3),
+          width: 2,
+          style: BorderStyle.solid,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => _showCreateMixDialog(mixManager),
+          child: const Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.add_circle_outline,
+                color: Color(0xFF6C63FF),
+                size: 32,
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Criar Mix',
+                style: TextStyle(
+                  color: Color(0xFF6C63FF),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              SizedBox(height: 4),
+              Text(
+                'Novo',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ).animate(delay: 400.ms).fadeIn().scale();
+  }
+
+  void _showCreateMixDialog(MixManagerProvider mixManager) {
+    final nameController = TextEditingController();
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF2A2A3E),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Text(
+          'Criar Novo Mix',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                hintText: 'Nome do mix',
+                hintStyle: TextStyle(color: Colors.white.withOpacity(0.6)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFF6C63FF)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFF6C63FF), width: 2),
+                ),
+              ),
+              autofocus: true,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Você poderá adicionar músicas ao mix depois de criá-lo.',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.8),
+                fontSize: 14,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final name = nameController.text.trim();
+              if (name.isNotEmpty) {
+                final mix = await mixManager.createNewMix(name);
+                
+                if (mounted) {
+                  Navigator.of(context).pop();
+                  
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Mix "$name" criado com sucesso!'),
+                      backgroundColor: const Color(0xFF6C63FF),
+                      action: SnackBarAction(
+                        label: 'Editar',
+                        onPressed: () {
+                          context.go('/mix_edit/${mix.id}');
+                        },
+                      ),
+                    ),
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF6C63FF),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Criar'),
+          ),
+        ],
       ),
     );
   }
@@ -767,3 +1079,4 @@ class _CategoryScreenState extends State<CategoryScreen> {
     ];
   }
 }
+

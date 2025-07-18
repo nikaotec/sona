@@ -10,32 +10,33 @@ import 'package:just_audio/just_audio.dart';
 class AudioProvider extends ChangeNotifier {
   final AudioService _service = AudioService();
   AudioModel? _currentAudio;
-  AudioModel? _currentSound;
   bool _isPlaying = false;
-  bool _isPaused = false;
-  bool _isMixMode = false;
   AdService? _adService;
   Duration _currentPosition = Duration.zero;
   Duration _totalDuration = Duration.zero;
   bool _isLoading = false;
-  
-  // Controles de volume para mixagem
-  double _musicVolume = 1.0;
-  double _soundVolume = 0.7;
+
+  // Funcionalidade de Mix
+  List<AudioModel> _currentMix = [];
+  int _currentMixIndex = 0;
+  bool _isMixPlaying = false;
+  bool _isLoopEnabled = false;
+  bool _isShuffleEnabled = false;
 
   AudioModel? get currentAudio => _currentAudio;
-  AudioModel? get currentSound => _currentSound;
   bool get isPlaying => _isPlaying;
-  bool get isPaused => _isPaused;
-  bool get isMixMode => _isMixMode;
   Duration get currentPosition => _currentPosition;
   Duration get totalDuration => _totalDuration;
   bool get isLoading => _isLoading;
-  double get musicVolume => _musicVolume;
-  double get soundVolume => _soundVolume;
 
-  // Stream para posição (compatibilidade)
-  Stream<Duration> get positionStream => _service.positionStream;
+  // Getters para Mix
+  List<AudioModel> get currentMix => List.unmodifiable(_currentMix);
+  int get currentMixIndex => _currentMixIndex;
+  bool get isMixPlaying => _isMixPlaying;
+  bool get isLoopEnabled => _isLoopEnabled;
+  bool get isShuffleEnabled => _isShuffleEnabled;
+  bool get hasMix => _currentMix.isNotEmpty;
+  int get mixCount => _currentMix.length;
 
   AudioProvider() {
     _service.positionStream.listen((position) {
@@ -51,9 +52,14 @@ class AudioProvider extends ChangeNotifier {
     // Escuta mudanças no estado do player
     _service.playerStateStream.listen((playerState) {
       _isPlaying = playerState.playing;
-      _isPaused = !playerState.playing && playerState.processingState != ProcessingState.idle;
       _isLoading = playerState.processingState == ProcessingState.loading ||
                    playerState.processingState == ProcessingState.buffering;
+      
+      // Verifica se a música terminou para tocar a próxima no mix
+      if (playerState.processingState == ProcessingState.completed && _isMixPlaying) {
+        _playNextInMix();
+      }
+      
       notifyListeners();
     });
   }
@@ -69,30 +75,19 @@ class AudioProvider extends ChangeNotifier {
       notifyListeners();
       
       // Se é o mesmo áudio e está pausado, apenas resume
-      if (_currentAudio?.url == audio.url && _isPaused) {
-        if (_isMixMode && _currentSound != null) {
-          _service.resumeMix();
-        } else {
-          _service.resumeMusic();
-        }
+      if (_currentAudio?.url == audio.url && !_isPlaying) {
+         _service.resume(); 
       } else {
-        // Se é um novo áudio, carrega e toca
+        // Se é um novo áudio ou o áudio atual não está pausado, carrega e toca
         _currentAudio = audio;
-        _isPaused = false;
-        
-        if (_isMixMode && _currentSound != null) {
-          await _service.playMix(audio.url, _currentSound!.url);
-        } else {
-          await _service.loadMusic(audio.url);
-          await _service.playMusic();
-        }
+        await _service.load(audio.url); // Carrega o áudio
+        await _service.play(); // Toca o áudio
       }
       
       _isLoading = false;
       notifyListeners();
     } catch (e) {
       _isLoading = false;
-      debugPrint("Erro ao reproduzir áudio: $e");
       notifyListeners();
     }
   }
@@ -102,6 +97,9 @@ class AudioProvider extends ChangeNotifier {
     _adService ??= Provider.of<AdService>(context, listen: false);
     await paywall.loadData();
 
+    // Para áudio individual, limpa o mix
+    _clearMix();
+
     if (paywall.isPremium) {
       _actuallyPlayAudio(audio);
       return;
@@ -109,37 +107,213 @@ class AudioProvider extends ChangeNotifier {
 
     _adService?.showRewardedAd(
       onUserEarnedRewardCallback: () {
-        debugPrint("Usuário ganhou recompensa por assistir o anúncio antes de tocar a música.");
+        // debugPrint("Usuário ganhou recompensa por assistir o anúncio antes de tocar a música.");
       },
       onAdDismissed: () {
-        debugPrint("Anúncio dispensado, tocando música.");
+        // debugPrint("Anúncio dispensado, tocando música.");
         _actuallyPlayAudio(audio);
       },
       onAdFailedToLoadOrShow: (error) {
-        debugPrint("Falha ao carregar/mostrar anúncio: $error. Tocando música diretamente.");
+        // debugPrint("Falha ao carregar/mostrar anúncio: $error. Tocando música diretamente.");
         _actuallyPlayAudio(audio);
       },
     );
   }
 
-  void pauseAudio() {
-    if (_isMixMode) {
-      _service.pauseMix();
-    } else {
-      _service.pauseMusic();
+  // Método para tocar um mix de áudios
+  void playMix(List<AudioModel> audios, {bool loop = false, bool shuffle = false}) async {
+    if (audios.isEmpty) return;
+
+    _currentMix = List.from(audios);
+    _isLoopEnabled = loop;
+    _isShuffleEnabled = shuffle;
+    _isMixPlaying = true;
+    _currentMixIndex = 0;
+
+    if (shuffle) {
+      _currentMix.shuffle();
     }
-    _isPaused = true;
+
+    await _playAudioFromMix(_currentMixIndex);
+  }
+
+  // Toca um áudio específico do mix
+  Future<void> _playAudioFromMix(int index) async {
+    if (index < 0 || index >= _currentMix.length) return;
+
+    _currentMixIndex = index;
+    final audio = _currentMix[index];
+    
+    try {
+      _isLoading = true;
+      notifyListeners();
+      
+      _currentAudio = audio;
+      await _service.load(audio.url);
+      await _service.play();
+      
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      // Se falhar, tenta a próxima música
+      _playNextInMix();
+    }
+  }
+
+  // Toca a próxima música do mix
+  void _playNextInMix() async {
+    if (!_isMixPlaying || _currentMix.isEmpty) return;
+
+    int nextIndex = _currentMixIndex + 1;
+
+    // Se chegou ao fim da lista
+    if (nextIndex >= _currentMix.length) {
+      if (_isLoopEnabled) {
+        // Se loop está ativado, volta para o início
+        nextIndex = 0;
+      } else {
+        // Se não há loop, para o mix
+        _stopMix();
+        return;
+      }
+    }
+
+    await _playAudioFromMix(nextIndex);
+  }
+
+  // Toca a música anterior do mix
+  void playPreviousInMix() async {
+    if (!_isMixPlaying || _currentMix.isEmpty) return;
+
+    int previousIndex = _currentMixIndex - 1;
+
+    // Se está no início da lista
+    if (previousIndex < 0) {
+      if (_isLoopEnabled) {
+        // Se loop está ativado, vai para o final
+        previousIndex = _currentMix.length - 1;
+      } else {
+        // Se não há loop, fica na primeira música
+        previousIndex = 0;
+      }
+    }
+
+    await _playAudioFromMix(previousIndex);
+  }
+
+  // Força a próxima música do mix
+  void playNextInMix() async {
+    _playNextInMix();
+  }
+
+  // Para o mix
+  void _stopMix() {
+    _isMixPlaying = false;
+    _currentMix.clear();
+    _currentMixIndex = 0;
+    _isLoopEnabled = false;
+    _isShuffleEnabled = false;
+    stopAudio();
+  }
+
+  // Limpa o mix sem parar a reprodução atual
+  void _clearMix() {
+    _isMixPlaying = false;
+    _currentMix.clear();
+    _currentMixIndex = 0;
+    _isLoopEnabled = false;
+    _isShuffleEnabled = false;
+  }
+
+   
+
+  // Pausa o mix
+  void pauseMix() {
+    if (_isMixPlaying) {
+      pauseAudio();
+    }
+  }
+
+  // Resume o mix
+  void resumeMix() {
+    if (_isMixPlaying) {
+      resumeAudio();
+    }
+  }
+
+  // Para completamente o mix
+  void stopMix() {
+    _stopMix();
+  }
+
+  // Toggle loop no mix
+  void toggleLoop() {
+    _isLoopEnabled = !_isLoopEnabled;
+    notifyListeners();
+  }
+
+  // Toggle shuffle no mix
+  void toggleShuffle() {
+    _isShuffleEnabled = !_isShuffleEnabled;
+    
+    if (_isShuffleEnabled && _isMixPlaying) {
+      // Reorganiza o mix mantendo a música atual
+      final currentAudio = _currentMix[_currentMixIndex];
+      _currentMix.shuffle();
+      
+      // Encontra a nova posição da música atual
+      _currentMixIndex = _currentMix.indexWhere((audio) => audio.id == currentAudio.id);
+      if (_currentMixIndex == -1) _currentMixIndex = 0;
+    }
+    
+    notifyListeners();
+  }
+
+  // Adiciona áudio ao mix atual
+  void addToCurrentMix(AudioModel audio) {
+    if (!_currentMix.any((a) => a.id == audio.id)) {
+      _currentMix.add(audio);
+      notifyListeners();
+    }
+  }
+
+  // Remove áudio do mix atual
+  void removeFromCurrentMix(AudioModel audio) {
+    final index = _currentMix.indexWhere((a) => a.id == audio.id);
+    if (index != -1) {
+      _currentMix.removeAt(index);
+      
+      // Ajusta o índice atual se necessário
+      if (index < _currentMixIndex) {
+        _currentMixIndex--;
+      } else if (index == _currentMixIndex) {
+        // Se removeu a música atual, para ou vai para a próxima
+        if (_currentMix.isEmpty) {
+          _stopMix();
+        } else {
+          // Ajusta o índice para não sair dos limites
+          if (_currentMixIndex >= _currentMix.length) {
+            _currentMixIndex = _currentMix.length - 1;
+          }
+          _playAudioFromMix(_currentMixIndex);
+        }
+      }
+      
+      notifyListeners();
+    }
+  }
+
+  // Métodos originais mantidos
+  void pauseAudio() {
+    _service.pause();
     notifyListeners();
   }
 
   void resumeAudio() async {
     if (_currentAudio != null) {
-      if (_isMixMode && _currentSound != null) {
-        _service.resumeMix();
-      } else {
-        _service.resumeMusic();
-      }
-      _isPaused = false;
+      _service.resume(); 
       notifyListeners();
     }
   }
@@ -149,99 +323,17 @@ class AudioProvider extends ChangeNotifier {
     
     if (_isPlaying) {
       pauseAudio();
-    } else if (_isPaused) {
-      resumeAudio();
     } else {
-      playAudio(context, _currentAudio!);
+      resumeAudio();
     }
   }
 
   void stopAudio() {
-    if (_isMixMode) {
-      _service.stopMix();
-    } else {
-      _service.stopMusic();
-    }
+    _service.stop();
     _isPlaying = false;
-    _isPaused = false;
     _currentAudio = null;
-    _currentSound = null;
-    _isMixMode = false;
     _currentPosition = Duration.zero;
     _totalDuration = Duration.zero;
-    notifyListeners();
-  }
-
-  // Métodos para mixagem
-  void enableMixMode(AudioModel soundAudio) {
-    _currentSound = soundAudio;
-    _isMixMode = true;
-    notifyListeners();
-  }
-
-  void disableMixMode() {
-    if (_isMixMode) {
-      _service.stopSound();
-      _currentSound = null;
-      _isMixMode = false;
-      notifyListeners();
-    }
-  }
-
-  void playMix(BuildContext context, AudioModel musicAudio, AudioModel soundAudio) async {
-    _currentAudio = musicAudio;
-    _currentSound = soundAudio;
-    _isMixMode = true;
-    
-    final paywall = Provider.of<PaywallProvider>(context, listen: false);
-    await paywall.loadData();
-
-    if (paywall.isPremium) {
-      _actuallyPlayMix(musicAudio, soundAudio);
-      return;
-    }
-
-    _adService?.showRewardedAd(
-      onUserEarnedRewardCallback: () {
-        debugPrint("Usuário ganhou recompensa por assistir o anúncio antes de tocar o mix.");
-      },
-      onAdDismissed: () {
-        debugPrint("Anúncio dispensado, tocando mix.");
-        _actuallyPlayMix(musicAudio, soundAudio);
-      },
-      onAdFailedToLoadOrShow: (error) {
-        debugPrint("Falha ao carregar/mostrar anúncio: $error. Tocando mix diretamente.");
-        _actuallyPlayMix(musicAudio, soundAudio);
-      },
-    );
-  }
-
-  void _actuallyPlayMix(AudioModel musicAudio, AudioModel soundAudio) async {
-    try {
-      _isLoading = true;
-      notifyListeners();
-      
-      await _service.playMix(musicAudio.url, soundAudio.url);
-      
-      _isLoading = false;
-      notifyListeners();
-    } catch (e) {
-      _isLoading = false;
-      debugPrint("Erro ao reproduzir mix: $e");
-      notifyListeners();
-    }
-  }
-
-  // Controles de volume
-  void setMusicVolume(double volume) {
-    _musicVolume = volume.clamp(0.0, 1.0);
-    _service.setMusicVolume(_musicVolume);
-    notifyListeners();
-  }
-
-  void setSoundVolume(double volume) {
-    _soundVolume = volume.clamp(0.0, 1.0);
-    _service.setSoundVolume(_soundVolume);
     notifyListeners();
   }
 
@@ -249,9 +341,37 @@ class AudioProvider extends ChangeNotifier {
     _service.seek(position);
   }
 
+  // Método de conveniência para verificar se um áudio está no mix atual
+  bool isAudioInCurrentMix(AudioModel audio) {
+    return _currentMix.any((a) => a.id == audio.id);
+  }
+
+  // Obtém informações do mix atual
+  Map<String, dynamic> get currentMixInfo {
+    if (!_isMixPlaying || _currentMix.isEmpty) {
+      return {
+        'isPlaying': false,
+        'currentIndex': 0,
+        'totalTracks': 0,
+        'currentTrack': null,
+        'isLoop': false,
+        'isShuffle': false,
+      };
+    }
+
+    return {
+      'isPlaying': _isMixPlaying,
+      'currentIndex': _currentMixIndex + 1,
+      'totalTracks': _currentMix.length,
+      'currentTrack': _currentAudio,
+      'isLoop': _isLoopEnabled,
+      'isShuffle': _isShuffleEnabled,
+    };
+  }
+
   @override
   void dispose() {
-    _service.dispose();
+    _service.stop();
     super.dispose();
   }
 }

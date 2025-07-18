@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
-import 'package:sona/components/circular_music_visualizer.dart';
-import 'package:sona/components/visualizer_style_manager.dart';
 import 'package:sona/provider/audio_provider.dart';
+import 'package:sona/provider/mix_manager_provider.dart';
 import 'package:sona/components/banner_ad_widget.dart';
 import 'package:sona/provider/paywall_provider.dart';
-import 'package:sona/model/audio_model.dart';
 
 class PlayerScreen extends StatefulWidget {
   final String? heroTag;
@@ -18,30 +17,18 @@ class PlayerScreen extends StatefulWidget {
   State<PlayerScreen> createState() => _PlayerScreenState();
 }
 
-class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMixin {
+class _PlayerScreenState extends State<PlayerScreen>  with TickerProviderStateMixin {
   late AnimationController _rotationController;
   late AnimationController _pulseController;
   late AnimationController _slideController;
   late Animation<double> _rotationAnimation;
   late Animation<double> _pulseAnimation;
   late Animation<Offset> _slideAnimation;
-  
-  // Variáveis para o visualizador
-  VisualizerStyleConfig? _currentVisualizerStyle;
-  bool _showVisualizer = true;
-  
-  // Variáveis para mixagem
-  bool _showMixControls = false;
-  List<AudioModel> _availableSounds = [];
 
   @override
   void initState() {
     super.initState();
-    _initializeAnimations();
-    _loadAvailableSounds();
-  }
-
-  void _initializeAnimations() {
+    
     // Controlador para rotação do ícone de música
     _rotationController = AnimationController(
       duration: const Duration(seconds: 20),
@@ -94,44 +81,6 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
     });
   }
 
-  void _loadAvailableSounds() {
-    // Sons ambiente disponíveis para mixagem
-    _availableSounds = [
-      AudioModel(
-        id: 'rain',
-        title: 'Chuva',
-        category: 'Nature Sounds',
-        url: 'assets/music/nature/rain.mp3',
-        duration: const Duration(minutes: 60),
-        isPremium: false,
-      ),
-      AudioModel(
-        id: 'ocean',
-        title: 'Oceano',
-        category: 'Nature Sounds',
-        url: 'assets/music/nature/ocean.mp3',
-        duration: const Duration(minutes: 60),
-        isPremium: false,
-      ),
-      AudioModel(
-        id: 'forest',
-        title: 'Floresta',
-        category: 'Nature Sounds',
-        url: 'assets/music/nature/forest.mp3',
-        duration: const Duration(minutes: 60),
-        isPremium: false,
-      ),
-      AudioModel(
-        id: 'fire',
-        title: 'Lareira',
-        category: 'Nature Sounds',
-        url: 'assets/music/nature/fire.mp3',
-        duration: const Duration(minutes: 60),
-        isPremium: false,
-      ),
-    ];
-  }
-
   @override
   void dispose() {
     _rotationController.dispose();
@@ -147,26 +96,12 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
     return '$twoDigitMinutes:$twoDigitSeconds';
   }
 
-  void _generateNewVisualizerStyle(dynamic audio) {
-    if (audio != null) {
-      _currentVisualizerStyle = VisualizerStyleManager.getStyleForMusic(
-        category: audio.category,
-        title: audio.title,
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Consumer<AudioProvider>(
-      builder: (context, audioProvider, child) {
+    return Consumer2<AudioProvider, MixManagerProvider>(
+      builder: (context, audioProvider, mixManager, child) {
         final paywallProvider = Provider.of<PaywallProvider>(context);
         final audio = audioProvider.currentAudio;
-
-        // Gerar novo estilo de visualizador se necessário
-        if (audio != null && _currentVisualizerStyle == null) {
-          _generateNewVisualizerStyle(audio);
-        }
 
         // Controlar animações baseado no estado de reprodução
         if (audioProvider.isPlaying) {
@@ -229,10 +164,6 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                     child: _buildAnimatedMusicIcon(screenWidth),
                   ),
                   
-                  // Controles de mixagem (se ativados)
-                  if (_showMixControls)
-                    _buildMixControls(audioProvider),
-                  
                   // Informações da música e controles animados
                   Expanded(
                     flex: 2,
@@ -242,6 +173,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                         screenWidth,
                         screenHeight,
                         audioProvider,
+                        mixManager,
                         audio,
                       ),
                     ),
@@ -274,17 +206,219 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
               ),
             ).animate().fadeIn(delay: 200.ms).slideY(begin: -0.5, end: 0),
           ),
-          // Botão para ativar/desativar controles de mixagem
-          IconButton(
-            icon: Icon(
-              _showMixControls ? Icons.layers_clear : Icons.layers,
-              color: Colors.white,
-            ),
-            onPressed: () {
-              setState(() {
-                _showMixControls = !_showMixControls;
-              });
+          // Botão de adicionar ao mix
+          Consumer2<AudioProvider, MixManagerProvider>(
+            builder: (context, audioProvider, mixManager, child) {
+              final audio = audioProvider.currentAudio;
+              if (audio == null) return SizedBox(width: screenWidth * 0.12);
+              
+              return _buildAddToMixButton(audio, mixManager, screenWidth);
             },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAddToMixButton(dynamic audio, MixManagerProvider mixManager, double screenWidth) {
+    return PopupMenuButton<String>(
+      icon: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: const Color(0xFF6C63FF).withOpacity(0.2),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: const Color(0xFF6C63FF).withOpacity(0.5),
+          ),
+        ),
+        child: const Icon(
+          Icons.playlist_add,
+          color: Color(0xFF6C63FF),
+          size: 24,
+        ),
+      ),
+      color: const Color(0xFF2A2A3E),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      onSelected: (value) => _handleMixAction(value, audio, mixManager),
+      itemBuilder: (context) {
+        final items = <PopupMenuEntry<String>>[];
+        
+        // Opção para criar novo mix
+        items.add(
+          const PopupMenuItem(
+            value: 'create_new',
+            child: Row(
+              children: [
+                Icon(Icons.add, color: Color(0xFF6C63FF), size: 20),
+                SizedBox(width: 12),
+                Text('Criar Novo Mix', style: TextStyle(color: Colors.white)),
+              ],
+            ),
+          ),
+        );
+        
+        // Separador se houver mixes existentes
+        if (mixManager.hasMixes) {
+          items.add(const PopupMenuDivider());
+          
+          // Adicionar aos mixes existentes
+          for (final mix in mixManager.mixes) {
+            final isInMix = mix.containsAudio(audio);
+            items.add(
+              PopupMenuItem(
+                value: 'mix_${mix.id}',
+                child: Row(
+                  children: [
+                    Icon(
+                      isInMix ? Icons.check_circle : Icons.queue_music,
+                      color: isInMix ? Colors.green : Colors.white,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        mix.name,
+                        style: TextStyle(
+                          color: isInMix ? Colors.green : Colors.white,
+                          fontWeight: isInMix ? FontWeight.bold : FontWeight.normal,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (isInMix)
+                      const Icon(
+                        Icons.check,
+                        color: Colors.green,
+                        size: 16,
+                      ),
+                  ],
+                ),
+              ),
+            );
+          }
+        }
+        
+        return items;
+      },
+    ).animate().fadeIn(delay: 100.ms).scale();
+  }
+
+  void _handleMixAction(String action, dynamic audio, MixManagerProvider mixManager) async {
+    if (action == 'create_new') {
+      _showCreateMixDialog(audio, mixManager);
+    } else if (action.startsWith('mix_')) {
+      final mixId = action.substring(4);
+      await mixManager.toggleAudioInMix(mixId, audio);
+      
+      final mix = mixManager.getById(mixId);
+      if (mix != null) {
+        final isInMix = mix.containsAudio(audio);
+        
+        HapticFeedback.lightImpact();
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isInMix 
+                  ? '${audio.title} adicionado ao mix "${mix.name}"'
+                  : '${audio.title} removido do mix "${mix.name}"',
+            ),
+            backgroundColor: const Color(0xFF6C63FF),
+            action: SnackBarAction(
+              label: 'Ver Mix',
+              onPressed: () {
+                context.go('/mix_edit/${mix.id}');
+              },
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  void _showCreateMixDialog(dynamic audio, MixManagerProvider mixManager) {
+    final nameController = TextEditingController();
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF2A2A3E),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Text(
+          'Criar Novo Mix',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                hintText: 'Nome do mix',
+                hintStyle: TextStyle(color: Colors.white.withOpacity(0.6)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFF6C63FF)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFF6C63FF), width: 2),
+                ),
+              ),
+              autofocus: true,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'A música "${audio.title}" será adicionada ao novo mix.',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.8),
+                fontSize: 14,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final name = nameController.text.trim();
+              if (name.isNotEmpty) {
+                final mix = await mixManager.createNewMix(name);
+                await mixManager.addAudioToMix(mix.id, audio);
+                
+                if (mounted) {
+                  Navigator.of(context).pop();
+                  HapticFeedback.mediumImpact();
+                  
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Mix "$name" criado com sucesso!'),
+                      backgroundColor: const Color(0xFF6C63FF),
+                      action: SnackBarAction(
+                        label: 'Editar',
+                        onPressed: () {
+                          context.go('/mix_edit/${mix.id}');
+                        },
+                      ),
+                    ),
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF6C63FF),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Criar'),
           ),
         ],
       ),
@@ -294,103 +428,27 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
   Widget _buildAnimatedMusicIcon(double screenWidth) {
     return Container(
       margin: EdgeInsets.symmetric(horizontal: screenWidth * 0.1),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // Visualizador circular de fundo
-          if (_showVisualizer && _currentVisualizerStyle != null)
-            CircularMusicVisualizer(
-              size: screenWidth * 0.8,
-              isPlaying: Provider.of<AudioProvider>(context, listen: false).isPlaying,
-              style: _currentVisualizerStyle!.style,
-              primaryColor: _currentVisualizerStyle!.primaryColor,
-              secondaryColor: _currentVisualizerStyle!.secondaryColor,
-              intensity: VisualizerStyleManager.getIntensityForMusic(
-                Provider.of<AudioProvider>(context, listen: false).currentAudio?.category,
-                Provider.of<AudioProvider>(context, listen: false).currentAudio?.title,
-              ),
-            ),
-          
-          // Ícone central com decoração
-          // Container(
-          //   width: screenWidth * 0.4,
-          //   height: screenWidth * 0.4,
-          //   decoration: BoxDecoration(
-          //     borderRadius: BorderRadius.circular(screenWidth * 0.05),
-          //     boxShadow: [
-          //       BoxShadow(
-          //         color: (_currentVisualizerStyle?.primaryColor ?? const Color(0xFF6C63FF)).withOpacity(0.3),
-          //         blurRadius: screenWidth * 0.1,
-          //         offset: Offset(0, screenWidth * 0.05),
-          //       ),
-          //     ],
-          //   ),
-          //   child: ClipRRect(
-          //     borderRadius: BorderRadius.circular(screenWidth * 0.05),
-          //     child: widget.heroTag != null
-          //       ? Hero(
-          //           tag: widget.heroTag!,
-          //           child: Material(
-          //             color: Colors.transparent,
-          //             child: _buildRotatingIcon(screenWidth),
-          //           ),
-          //         )
-          //       : _buildRotatingIcon(screenWidth),
-          //   ),
-          // ),
-          
-          // Botão para alternar visualizador
-          Positioned(
-            top: 10,
-            right: 10,
-            child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  if (_showVisualizer) {
-                    _generateNewVisualizerStyle(
-                      Provider.of<AudioProvider>(context, listen: false).currentAudio
-                    );
-                  } else {
-                    _showVisualizer = !_showVisualizer;
-                  }
-                });
-              },
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Icon(
-                  _showVisualizer ? Icons.refresh : Icons.visibility,
-                  color: Colors.white.withOpacity(0.8),
-                  size: 20,
-                ),
-              ),
-            ),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(screenWidth * 0.05),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF6C63FF).withOpacity(0.3),
+            blurRadius: screenWidth * 0.1,
+            offset: Offset(0, screenWidth * 0.05),
           ),
-          
-          // Indicador do estilo atual
-          if (_showVisualizer && _currentVisualizerStyle != null)
-            Positioned(
-              bottom: 10,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.5),
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                child: Text(
-                  _currentVisualizerStyle!.name,
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.9),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ),
         ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(screenWidth * 0.05),
+        child: widget.heroTag != null
+          ? Hero(
+              tag: widget.heroTag!,
+              child: Material(
+                color: Colors.transparent,
+                child: _buildRotatingIcon(screenWidth),
+              ),
+            )
+          : _buildRotatingIcon(screenWidth),
       ),
     ).animate().scale(delay: 400.ms, duration: 800.ms, curve: Curves.elasticOut);
   }
@@ -434,6 +492,24 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                   size: screenWidth * 0.3,
                   color: Colors.white,
                 ),
+                // Pequenos pontos para simular reflexos
+                ...List.generate(8, (index) {
+                  final angle = (index * 45) * 3.14159 / 180;
+                  return Transform.translate(
+                    offset: Offset(
+                      (screenWidth * 0.25) * 0.8 * (angle / 6.28),
+                      (screenWidth * 0.25) * 0.8 * (angle / 6.28),
+                    ),
+                    child: Container(
+                      width: 4,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.6),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  );
+                }),
               ],
             ),
           ),
@@ -442,188 +518,11 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
     );
   }
 
-  Widget _buildMixControls(AudioProvider audioProvider) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.1),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.layers,
-                color: Colors.white.withOpacity(0.8),
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Controles de Mixagem',
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.9),
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const Spacer(),
-              if (audioProvider.isMixMode)
-                TextButton(
-                  onPressed: () {
-                    audioProvider.disableMixMode();
-                  },
-                  child: const Text(
-                    'Desativar Mix',
-                    style: TextStyle(color: Colors.red),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          
-          // Controles de volume se estiver em modo mix
-          if (audioProvider.isMixMode) ...[
-            Text(
-              'Volume da Música: ${(audioProvider.musicVolume * 100).round()}%',
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.7),
-                fontSize: 14,
-              ),
-            ),
-            Slider(
-              value: audioProvider.musicVolume,
-              onChanged: (value) {
-                audioProvider.setMusicVolume(value);
-              },
-              activeColor: Colors.blue,
-              inactiveColor: Colors.white.withOpacity(0.3),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Volume do Som: ${(audioProvider.soundVolume * 100).round()}%',
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.7),
-                fontSize: 14,
-              ),
-            ),
-            Slider(
-              value: audioProvider.soundVolume,
-              onChanged: (value) {
-                audioProvider.setSoundVolume(value);
-              },
-              activeColor: Colors.green,
-              inactiveColor: Colors.white.withOpacity(0.3),
-            ),
-            const SizedBox(height: 12),
-          ],
-          
-          // Lista de sons disponíveis
-          Text(
-            'Sons Ambiente:',
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.9),
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            height: 60,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: _availableSounds.length,
-              itemBuilder: (context, index) {
-                final sound = _availableSounds[index];
-                final isSelected = audioProvider.currentSound?.id == sound.id;
-                
-                return Container(
-                  margin: const EdgeInsets.only(right: 8),
-                  child: GestureDetector(
-                    onTap: () {
-                      if (audioProvider.currentAudio != null) {
-                        if (isSelected) {
-                          audioProvider.disableMixMode();
-                        } else {
-                          audioProvider.enableMixMode(sound);
-                          if (audioProvider.isPlaying) {
-                            audioProvider.playMix(
-                              context,
-                              audioProvider.currentAudio!,
-                              sound,
-                            );
-                          }
-                        }
-                      }
-                    },
-                    child: Container(
-                      width: 80,
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: isSelected 
-                            ? Colors.blue.withOpacity(0.3)
-                            : Colors.white.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: isSelected 
-                              ? Colors.blue
-                              : Colors.white.withOpacity(0.2),
-                        ),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            _getSoundIcon(sound.title),
-                            color: isSelected ? Colors.blue : Colors.white.withOpacity(0.8),
-                            size: 20,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            sound.title,
-                            style: TextStyle(
-                              color: isSelected ? Colors.blue : Colors.white.withOpacity(0.8),
-                              fontSize: 10,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.3, end: 0);
-  }
-
-  IconData _getSoundIcon(String soundTitle) {
-    switch (soundTitle.toLowerCase()) {
-      case 'chuva':
-        return Icons.water_drop;
-      case 'oceano':
-        return Icons.waves;
-      case 'floresta':
-        return Icons.forest;
-      case 'lareira':
-        return Icons.local_fire_department;
-      default:
-        return Icons.music_note;
-    }
-  }
-
   Widget _buildAnimatedControls(
     double screenWidth,
     double screenHeight,
     AudioProvider audioProvider,
+    MixManagerProvider mixManager,
     dynamic audio,
   ) {
     return Padding(
@@ -652,35 +551,9 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
             ),
           ).animate().fadeIn(delay: 700.ms).slideY(begin: 0.3, end: 0),
           
-          // Indicador de mix mode
-          if (audioProvider.isMixMode && audioProvider.currentSound != null)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(15),
-                border: Border.all(color: Colors.blue.withOpacity(0.5)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.layers,
-                    color: Colors.blue,
-                    size: 16,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Mix: ${audioProvider.currentSound!.title}',
-                    style: const TextStyle(
-                      color: Colors.blue,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ).animate().fadeIn(delay: 750.ms).scale(),
+          // Informações do mix (se estiver tocando)
+          if (audioProvider.isMixPlaying)
+            _buildMixInfo(audioProvider, screenWidth),
           
           // Barra de progresso animada
           _buildAnimatedProgressBar(screenWidth, screenHeight, audioProvider),
@@ -690,6 +563,56 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
         ],
       ),
     );
+  }
+
+  Widget _buildMixInfo(AudioProvider audioProvider, double screenWidth) {
+    final mixInfo = audioProvider.currentMixInfo;
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF6C63FF).withOpacity(0.2),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: const Color(0xFF6C63FF).withOpacity(0.5),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.queue_music,
+            color: Color(0xFF6C63FF),
+            size: 16,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            'Mix: ${mixInfo['currentIndex']}/${mixInfo['totalTracks']}',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: screenWidth * 0.035,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          if (mixInfo['isLoop'] == true) ...[
+            const SizedBox(width: 8),
+            const Icon(
+              Icons.repeat,
+              color: Color(0xFF6C63FF),
+              size: 14,
+            ),
+          ],
+          if (mixInfo['isShuffle'] == true) ...[
+            const SizedBox(width: 8),
+            const Icon(
+              Icons.shuffle,
+              color: Color(0xFF6C63FF),
+              size: 14,
+            ),
+          ],
+        ],
+      ),
+    ).animate().fadeIn(delay: 750.ms).slideY(begin: 0.3, end: 0);
   }
 
   Widget _buildAnimatedProgressBar(
@@ -761,15 +684,18 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        // Botão anterior
-        AnimatedControlButton(
-          icon: Icons.skip_previous,
-          size: screenWidth * 0.1,
-          onPressed: () {
-            // TODO: Implementar música anterior
-          },
-          delay: 900.ms,
-        ),
+        // Botão anterior (só aparece se estiver tocando mix)
+        if (audioProvider.isMixPlaying)
+          AnimatedControlButton(
+            icon: Icons.skip_previous,
+            size: screenWidth * 0.1,
+            onPressed: () {
+              audioProvider.playPreviousInMix();
+            },
+            delay: 900.ms,
+          )
+        else
+          SizedBox(width: screenWidth * 0.15),
         
         SizedBox(width: screenWidth * 0.05),
         
@@ -814,15 +740,18 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
         
         SizedBox(width: screenWidth * 0.05),
         
-        // Botão próximo
-        AnimatedControlButton(
-          icon: Icons.skip_next,
-          size: screenWidth * 0.1,
-          onPressed: () {
-            // TODO: Implementar próxima música
-          },
-          delay: 1100.ms,
-        ),
+        // Botão próximo (só aparece se estiver tocando mix)
+        if (audioProvider.isMixPlaying)
+          AnimatedControlButton(
+            icon: Icons.skip_next,
+            size: screenWidth * 0.1,
+            onPressed: () {
+              audioProvider.playNextInMix();
+            },
+            delay: 1100.ms,
+          )
+        else
+          SizedBox(width: screenWidth * 0.15),
       ],
     );
   }
