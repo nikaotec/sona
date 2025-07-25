@@ -22,6 +22,8 @@ import 'package:sona/service/video_ad_service.dart';
 import 'package:sona/service/audio_download_service.dart';
 import 'package:sona/screen/login_screen.dart';
 import 'package:sona/screen/paywall_screen.dart';
+import 'package:sona/provider/mix_manager_provider.dart';
+import 'package:sona/provider/enhanced_audio_provider.dart';
 
 void main() async {
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
@@ -103,6 +105,7 @@ class SonaApp extends StatelessWidget {
           },
         ),
         ChangeNotifierProvider(create: (_) => UserDataProvider()),
+        ChangeNotifierProvider(create: (_) => MixManagerProvider()),
         ChangeNotifierProxyProvider<AdService, AudioProvider>(
           create: (context) => AudioProvider(),
           update: (context, adService, audioProvider) {
@@ -111,6 +114,7 @@ class SonaApp extends StatelessWidget {
             return audioProvider;
           },
         ),
+        ChangeNotifierProvider(create: (_) => EnhancedAudioProvider()),
       ],
       child: MaterialApp.router(
         title: 'Sona',

@@ -241,6 +241,36 @@ class AudioService {
   /// Obtém o player principal
   AudioPlayer? get mainPlayer => _mainPlayer;
 
+  // Métodos de conveniência para o player principal
+  Stream<Duration> get positionStream => _mainPlayer?.positionStream ?? const Stream.empty();
+  Stream<Duration?> get durationStream => _mainPlayer?.durationStream ?? const Stream.empty();
+  Stream<PlayerState> get playerStateStream => _mainPlayer?.playerStateStream ?? const Stream.empty();
+
+  Future<void> load(String url) async {
+    if (_mainPlayer == null) {
+      setMainPlayer('mainPlayer'); // Define um player principal padrão se ainda não houver um
+    }
+    await loadAudio('mainPlayer', url);
+  }
+
+  Future<void> playMain() async {
+    if (_mainPlayer != null) {
+      await play('mainPlayer');
+    }
+  }
+
+  
+
+  void resume() {
+    if (_mainPlayer != null) {
+      play('mainPlayer'); // Play também serve para resumir
+    }
+  }
+
+ 
+
+
+  @override
   /// Limpa todos os recursos
   Future<void> dispose() async {
     for (final player in _players.values) {

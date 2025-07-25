@@ -1,0 +1,59 @@
+diff --git a/lib/service/audio_service.dart b/lib/service/audio_service.dart
+index fc0c653..5689831 100644
+--- a/lib/service/audio_service.dart
++++ b/lib/service/audio_service.dart
+@@ -241,6 +241,49 @@ class AudioService {
+   /// Obtém o player principal
+   AudioPlayer? get mainPlayer => _mainPlayer;
+ 
++  // Métodos de conveniência para o player principal
++  Stream<Duration> get positionStream => _mainPlayer?.positionStream ?? const Stream.empty();
++  Stream<Duration?> get durationStream => _mainPlayer?.durationStream ?? const Stream.empty();
++  Stream<PlayerState> get playerStateStream => _mainPlayer?.playerStateStream ?? const Stream.empty();
++
++  Future<void> load(String url) async {
++    if (_mainPlayer == null) {
++      setMainPlayer('mainPlayer'); // Define um player principal padrão se ainda não houver um
++    }
++    await loadAudio('mainPlayer', url);
++  }
++
++  Future<void> play() async {
++    if (_mainPlayer != null) {
++      await play('mainPlayer');
++    }
++  }
++
++  void pause() {
++    if (_mainPlayer != null) {
++      pause('mainPlayer');
++    }
++  }
++
++  void resume() {
++    if (_mainPlayer != null) {
++      play('mainPlayer'); // Play também serve para resumir
++    }
++  }
++
++  void stop() {
++    if (_mainPlayer != null) {
++      stop('mainPlayer');
++    }
++  }
++
++  void seek(Duration position) {
++    if (_mainPlayer != null) {
++      seek('mainPlayer', position);
++    }
++  }
++
++  @override
+   /// Limpa todos os recursos
+   Future<void> dispose() async {
+     for (final player in _players.values) {
+@@ -264,3 +307,5 @@ class AudioService {
+     debugPrint('Audio caching configuration ready for implementation');
+   }
+ }
+

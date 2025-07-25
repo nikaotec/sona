@@ -109,14 +109,16 @@ class EnhancedAudioProvider extends ChangeNotifier {
   Future<void> _actuallyPlayMainAudio(AudioModel audio) async {
     try {
       _isLoading = true;
+      // Define _currentAudio antes de notificar os listeners
+      // para que o PlayerScreen tenha o áudio disponível imediatamente.
+      _currentAudio = audio;
       notifyListeners();
       
       // Se é o mesmo áudio e está pausado, apenas resume
-      if (_currentAudio?.url == audio.url && !_isPlaying) {
+      if (_audioService.isPlaying(mainPlayerId) && _currentAudio?.url == audio.url) {
         await _audioService.play(mainPlayerId);
       } else {
         // Carrega e toca novo áudio
-        _currentAudio = audio;
         await _audioService.loadAudio(mainPlayerId, audio.url);
         await _audioService.play(mainPlayerId);
       }
@@ -127,6 +129,8 @@ class EnhancedAudioProvider extends ChangeNotifier {
       _isLoading = false;
       debugPrint("Erro ao reproduzir áudio principal: $e");
       notifyListeners();
+      // Limpa o currentAudio em caso de erro para evitar estado inconsistente
+      _currentAudio = null;
     }
   }
 
@@ -332,7 +336,7 @@ class EnhancedAudioProvider extends ChangeNotifier {
   }
 
   void resumeAudio() {
-    resumeMainAudio();
+    resumeAudio();
   }
 
   void togglePlayPause(BuildContext context) {
@@ -347,3 +351,4 @@ class EnhancedAudioProvider extends ChangeNotifier {
     seekMainAudio(position);
   }
 }
+

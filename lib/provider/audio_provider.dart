@@ -92,7 +92,9 @@ class AudioProvider extends ChangeNotifier {
         // Se é um novo áudio ou o áudio atual não está pausado, carrega e toca
         _currentAudio = audio;
         await _service.load(audio.url); // Carrega o áudio
-        await _service.play(); // Toca o áudio
+        await _service.play(audio.url); // Toca o áudio
+        // TODO: Passe o argumento necessário para o método play abaixo
+        // Exemplo: await _service.play(audio.url);
       }
       
       _isLoading = false;
@@ -131,7 +133,9 @@ class AudioProvider extends ChangeNotifier {
   }
 
   void pauseAudio() {
-    _service.pause();
+    if (_currentAudio != null) {
+      _service.pause(_currentAudio!.url);
+    }
     notifyListeners();
   }
 
@@ -154,7 +158,7 @@ class AudioProvider extends ChangeNotifier {
   }
 
   void stopAudio() {
-    _service.stop();
+    _service.stop(_currentAudio!.url);
     _isPlaying = false;
     _currentAudio = null;
     _currentPosition = Duration.zero;
@@ -163,12 +167,14 @@ class AudioProvider extends ChangeNotifier {
   }
 
   void seek(Duration position) {
-    _service.seek(position);
+    if (_currentAudio != null) {
+      _service.seek(_currentAudio!.url, position);
+    }
   }
 
   @override
   void dispose() {
-    _service.stop();
+    _service.stop(_currentAudio!.url);
     super.dispose();
   }
 }

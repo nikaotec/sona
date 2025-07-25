@@ -606,47 +606,71 @@ class _CategoryMusicListScreenState extends State<CategoryMusicListScreen>
   }
 
   void _handleAudioTap(AudioModel audio, int index, EnhancedAudioProvider audioProvider) async {
-    if (audio.isPremium) {
+    try {
+      if (audio.isPremium) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${audio.title} é um áudio premium. Assine para ouvir!'),
+            backgroundColor: Colors.amber,
+          ),
+        );
+        return;
+      }
+      
+      final paywallProvider = Provider.of<PaywallProvider>(context, listen: false);
+      await paywallProvider.loadData();
+      
+      if (!paywallProvider.isPremium) {
+        if (_videoAdService.isRewardedInterstitialAdReady) {
+          _videoAdService.showVideoAd(
+            onUserEarnedRewardCallback: () {},
+            onAdDismissed: () {
+              _playAudioAndNavigate(audioProvider, audio, index);
+            },
+            onAdFailedToLoadOrShow: (error) {
+              _playAudioAndNavigate(audioProvider, audio, index);
+            },
+          );
+        } else {
+          _playAudioAndNavigate(audioProvider, audio, index);
+        }
+      } else {
+        _playAudioAndNavigate(audioProvider, audio, index);
+      }
+    } catch (e) {
+      debugPrint("Erro ao tocar áudio: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${audio.title} é um áudio premium. Assine para ouvir!'),
-          backgroundColor: Colors.amber,
+          content: Text('Erro ao reproduzir ${audio.title}'),
+          backgroundColor: Colors.red,
         ),
       );
-      return;
     }
-    
-    final paywallProvider = Provider.of<PaywallProvider>(context, listen: false);
-    await paywallProvider.loadData();
-    
-    if (!paywallProvider.isPremium) {
-      if (_videoAdService.isRewardedInterstitialAdReady) {
-        _videoAdService.showVideoAd(
-          onUserEarnedRewardCallback: () {},
-          onAdDismissed: () {
-            audioProvider.playMainAudio(context, audio);
-            context.go('/player', extra: {
-              'heroTag': 'audio_${audio.id}_$index',
-            });
-          },
-          onAdFailedToLoadOrShow: (error) {
-            audioProvider.playMainAudio(context, audio);
-            context.go('/player', extra: {
-              'heroTag': 'audio_${audio.id}_$index',
-            });
-          },
-        );
-      } else {
-        audioProvider.playMainAudio(context, audio);
+  }
+
+  void _playAudioAndNavigate(EnhancedAudioProvider audioProvider, AudioModel audio, int index) async {
+    try {
+      // Certifica-se de que o BuildContext é válido antes de usá-lo
+      if (!mounted) return; 
+
+      await audioProvider.playMainAudio(context, audio);
+      
+      // Navega para a tela do player SOMENTE APÓS a reprodução ter sido iniciada com sucesso
+      if (mounted) {
         context.go('/player', extra: {
           'heroTag': 'audio_${audio.id}_$index',
         });
       }
-    } else {
-      audioProvider.playMainAudio(context, audio);
-      context.go('/player', extra: {
-        'heroTag': 'audio_${audio.id}_$index',
-      });
+    } catch (e) {
+      debugPrint("Erro ao reproduzir áudio: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erro ao reproduzir ${audio.title}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -1372,3 +1396,5 @@ class _EnhancedMusicCardState extends State<EnhancedMusicCard>
     return '$twoDigitMinutes:$twoDigitSeconds';
   }
 }
+
+
