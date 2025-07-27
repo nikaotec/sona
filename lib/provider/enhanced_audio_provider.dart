@@ -39,6 +39,7 @@ class EnhancedAudioProvider extends ChangeNotifier {
   Map<String, double> get mixVolumes => Map.unmodifiable(_mixVolumes);
   bool get hasMixActive => _activeMix.isNotEmpty;
   int get mixCount => _activeMix.length;
+  bool get isAnyMixPlaying => _audioService.hasPlayingMixAudio; // Adicionado
 
   EnhancedAudioProvider() {
     _initializeProvider();
@@ -351,4 +352,5 @@ class EnhancedAudioProvider extends ChangeNotifier {
     seekMainAudio(position);
   }
 }
+
 

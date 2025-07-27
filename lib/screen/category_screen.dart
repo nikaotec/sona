@@ -45,12 +45,73 @@ class _CategoryScreenState extends State<CategoryScreen> {
           ),
         ).animate().fadeIn().slideX(begin: -0.3, end: 0),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.person, color: Colors.white),
-            onPressed: () {
-              context.go('/profile');
+          // Botão de acesso ao Mix Player
+          Consumer<EnhancedAudioProvider>(
+            builder: (context, audioProvider, child) {
+              if (!audioProvider.hasMixActive) {
+                return IconButton(
+                  icon: const Icon(Icons.person, color: Colors.white),
+                  onPressed: () {
+                    context.go('/profile');
+                  },
+                ).animate().fadeIn(delay: 200.ms).scale();
+              }
+              
+              return Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Botão do Mix Player
+                  Container(
+                    margin: const EdgeInsets.only(right: 8),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () => context.go('/mix-player'),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF6B73FF).withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: const Color(0xFF6B73FF),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.queue_music,
+                                color: Color(0xFF6B73FF),
+                                size: 16,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${audioProvider.mixCount}',
+                                style: const TextStyle(
+                                  color: Color(0xFF6B73FF),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ).animate().fadeIn(delay: 150.ms).scale(),
+                  // Botão do perfil
+                  IconButton(
+                    icon: const Icon(Icons.person, color: Colors.white),
+                    onPressed: () {
+                      context.go('/profile');
+                    },
+                  ).animate().fadeIn(delay: 200.ms).scale(),
+                ],
+              );
             },
-          ).animate().fadeIn(delay: 200.ms).scale(),
+          ),
         ],
       ),
       body: Consumer4<SubscriptionProvider, UserDataProvider, MixManagerProvider, EnhancedAudioProvider>(
@@ -79,6 +140,12 @@ class _CategoryScreenState extends State<CategoryScreen> {
                   const SizedBox(height: 24),
                 ],
 
+                // Mix Ativo (se houver) - Movido para cima para maior destaque
+                if (audioProvider.hasMixActive) ...[
+                  _buildActiveMixSection(audioProvider),
+                  const SizedBox(height: 32),
+                ],
+
                 // Categoria recomendada (se houver)
                 if (userDataProvider.preferredCategory != null) ...[
                   _buildRecommendedSection(userDataProvider, categories),
@@ -88,12 +155,6 @@ class _CategoryScreenState extends State<CategoryScreen> {
                 // Seção de Mixes Salvos
                 if (mixManager.savedMixes.isNotEmpty) ...[
                   _buildMixesSection(mixManager, audioProvider),
-                  const SizedBox(height: 32),
-                ],
-
-                // Mix Ativo (se houver)
-                if (audioProvider.hasMixActive) ...[
-                  _buildActiveMixSection(audioProvider),
                   const SizedBox(height: 32),
                 ],
 
@@ -811,11 +872,25 @@ class _CategoryScreenState extends State<CategoryScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF6C63FF).withOpacity(0.1),
+        gradient: LinearGradient(
+          colors: [
+            const Color(0xFF6C63FF).withOpacity(0.2),
+            const Color(0xFF9644FF).withOpacity(0.1),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: const Color(0xFF6C63FF).withOpacity(0.3),
         ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF6C63FF).withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -823,18 +898,18 @@ class _CategoryScreenState extends State<CategoryScreen> {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   color: const Color(0xFF6C63FF).withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(
                   Icons.play_circle_filled,
                   color: Color(0xFF6C63FF),
-                  size: 20,
+                  size: 24,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -843,7 +918,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                       'Mix Ativo',
                       style: TextStyle(
                         color: Color(0xFF6C63FF),
-                        fontSize: 18,
+                        fontSize: 20,
                         fontWeight: FontWeight.bold,
                         fontFamily: 'Montserrat',
                       ),
@@ -859,21 +934,46 @@ class _CategoryScreenState extends State<CategoryScreen> {
                   ],
                 ),
               ),
-              ElevatedButton(
-                onPressed: () => context.go('/mix-list'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF6C63FF),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () => context.go('/mix-player'),
+                  icon: const Icon(Icons.queue_music, size: 18),
+                  label: const Text('Abrir Mix Player'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF6C63FF),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
-                child: const Text(
-                  'Gerenciar',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
+              ),
+              const SizedBox(width: 12),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: IconButton(
+                  onPressed: () {
+                    audioProvider.pauseAll();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Mix pausado'),
+                        backgroundColor: Colors.orange,
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  },
+                  icon: const Icon(
+                    Icons.pause,
+                    color: Colors.white,
                   ),
                 ),
               ),
@@ -881,7 +981,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
           ),
         ],
       ),
-    ).animate().fadeIn(delay: 450.ms).slideY(begin: 0.3, end: 0);
+    ).animate().fadeIn(delay: 450.ms).slideY(begin: 0.3, end: 0).scale(curve: Curves.easeOutBack);
   }
 
   void _loadMix(SavedMix mix, EnhancedAudioProvider audioProvider) async {
@@ -895,7 +995,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
       }
       
       // Navegar para a tela de mix
-      context.go('/mix-list');
+      context.go('/mix-player');
       
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
