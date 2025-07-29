@@ -5,6 +5,7 @@ import 'package:sona/provider/paywall_provider.dart';
 import 'package:sona/service/ad_service.dart';
 import 'package:sona/service/enhanced_audio_service.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:sona/model/mix_track_model.dart'; // Importar MixTrackModel
 
 /// Provider de áudio avançado com suporte para múltiplos players simultâneos
 class EnhancedAudioProvider extends ChangeNotifier {
@@ -39,7 +40,24 @@ class EnhancedAudioProvider extends ChangeNotifier {
   Map<String, double> get mixVolumes => Map.unmodifiable(_mixVolumes);
   bool get hasMixActive => _activeMix.isNotEmpty;
   int get mixCount => _activeMix.length;
-  bool get isAnyMixPlaying => _audioService.hasPlayingMixAudio; // Adicionado
+  bool get isAnyMixPlaying => _audioService.hasPlayingMixAudio; 
+
+  // NOVO GETTER: Retorna uma lista de MixTrackModel para o mix
+  List<MixTrackModel> get mixTracks {
+    return _activeMix.keys.map((playerId) {
+      final audio = _activeMix[playerId]!;
+      final volume = _mixVolumes[playerId]!;
+      final isPlaying = _audioService.isPlaying(playerId);
+      return MixTrackModel(
+        id: audio.id,
+        audio: audio,
+        player: _audioService.getPlayer(playerId), // Obter o player real
+        volume: volume,
+        isPlaying: isPlaying,
+        isLoaded: true, // Assumimos que está carregado se está no mix
+      );
+    }).toList();
+  }
 
   EnhancedAudioProvider() {
     _initializeProvider();
@@ -352,5 +370,4 @@ class EnhancedAudioProvider extends ChangeNotifier {
     seekMainAudio(position);
   }
 }
-
 

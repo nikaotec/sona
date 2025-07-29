@@ -603,5 +603,3 @@ class _AnimatedControlButtonState extends State<AnimatedControlButton>
     ).animate().fadeIn(delay: widget.delay).scale(curve: Curves.elasticOut);
   }
 }
-
-

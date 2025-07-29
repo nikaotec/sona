@@ -238,6 +238,11 @@ class EnhancedAudioService {
     return _players.values.any((player) => player.playing);
   }
 
+  /// Verifica se há algum áudio do mix tocando
+  bool get hasPlayingMixAudio {
+    return _players.entries.any((entry) => entry.key.startsWith('mix_') && entry.value.playing);
+  }
+
   /// Obtém o player principal
   AudioPlayer? get mainPlayer => _mainPlayer;
 
