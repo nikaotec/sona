@@ -56,7 +56,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                   },
                 ).animate().fadeIn(delay: 200.ms).scale();
               }
-              
+
               return Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -152,11 +152,9 @@ class _CategoryScreenState extends State<CategoryScreen> {
                   const SizedBox(height: 32),
                 ],
 
-                // Seção de Mixes Salvos
-                if (mixManager.savedMixes.isNotEmpty) ...[
-                  _buildMixesSection(mixManager, audioProvider),
-                  const SizedBox(height: 32),
-                ],
+                // Seção de Mixes - Sempre visível em formato carrossel
+                _buildMixesSection(mixManager, audioProvider),
+                const SizedBox(height: 32),
 
                 // Título das categorias
                 const Text(
@@ -205,7 +203,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
       ),
       // Mini Player flutuante
       bottomSheet: const MiniPlayerWidget(
-        showOnlyWhenPlaying: true,
+        showOnlyWhenPlaying: false,
         margin: EdgeInsets.all(16),
       ),
     );
@@ -261,10 +259,9 @@ class _CategoryScreenState extends State<CategoryScreen> {
     UserDataProvider userDataProvider,
     List<Map<String, dynamic>> categories,
   ) {
-   final preferredCategory = categories.firstWhere(
+    final preferredCategory = categories.firstWhere(
       (cat) => cat['title'] == userDataProvider.preferredCategory,
-      orElse: () =><String, Object>{...categories.first},
-
+      orElse: () => <String, Object>{...categories.first},
     );
 
     return Column(
@@ -292,115 +289,114 @@ class _CategoryScreenState extends State<CategoryScreen> {
         const SizedBox(height: 16),
 
         Hero(
-              tag: 'recommended_${preferredCategory['title']}',
-              child: Material(
-                color: Colors.transparent,
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF6C63FF), Color(0xFF9644FF)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF6C63FF).withOpacity(0.4),
-                        blurRadius: 20,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(
-                              preferredCategory['icon'] as IconData,
-                              color: Colors.white,
-                              size: 28,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  preferredCategory['title'] as String,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                Text(
-                                  'Baseado em suas preferências',
-                                  style: TextStyle(
-                                    color: Colors.white.withOpacity(0.8),
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const Icon(Icons.star, color: Colors.amber, size: 24),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        preferredCategory['subtitle'] as String,
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.9),
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: () {
-                          context.go(
-                            '/category-music-list',
-                            extra: {
-                              'categoryName':
-                                  preferredCategory['title'] as String,
-                              'audios':
-                                  preferredCategory['audios']
-                                      as List<AudioModel>,
-                              'heroTag':
-                                  'recommended_${preferredCategory['title']}',
-                            },
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: const Color(0xFF6C63FF),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24,
-                            vertical: 12,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: const Text(
-                          'Explorar Agora',
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                    ],
-                  ),
+          tag: 'recommended_${preferredCategory['title']}',
+          child: Material(
+            color: Colors.transparent,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF6C63FF), Color(0xFF9644FF)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF6C63FF).withOpacity(0.4),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
               ),
-            )
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          preferredCategory['icon'] as IconData,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              preferredCategory['title'] as String,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              'Baseado em suas preferências',
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.8),
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.star, color: Colors.amber, size: 24),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    preferredCategory['subtitle'] as String,
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.9),
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      context.go(
+                        '/category-music-list',
+                        extra: {
+                          'categoryName':
+                              preferredCategory['title'] as String,
+                          'audios':
+                              preferredCategory['audios'] as List<AudioModel>,
+                          'heroTag':
+                              'recommended_${preferredCategory['title']}',
+                        },
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: const Color(0xFF6C63FF),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'Explorar Agora',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        )
             .animate()
             .fadeIn(delay: 400.ms)
             .slideY(begin: 0.3, end: 0)
@@ -484,9 +480,9 @@ class _CategoryScreenState extends State<CategoryScreen> {
             border:
                 isPreferred
                     ? Border.all(
-                      color: const Color(0xFF6C63FF).withOpacity(0.5),
-                      width: 1,
-                    )
+                        color: const Color(0xFF6C63FF).withOpacity(0.5),
+                        width: 1,
+                      )
                     : null,
           ),
           child: ListTile(
@@ -631,9 +627,6 @@ class _CategoryScreenState extends State<CategoryScreen> {
   }
 
   Widget _buildMixesSection(MixManagerProvider mixManager, EnhancedAudioProvider audioProvider) {
-    final favoriteMixes = mixManager.favoriteMixes;
-    final recentMixes = mixManager.recentMixes.take(3).toList();
-    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -655,51 +648,41 @@ class _CategoryScreenState extends State<CategoryScreen> {
               ),
             ),
             const Spacer(),
-            TextButton(
-              onPressed: () => context.go('/saved-mixes'),
-              child: const Text(
-                'Ver Todos',
-                style: TextStyle(
-                  color: Color(0xFF6C63FF),
-                  fontWeight: FontWeight.w600,
+            if (mixManager.savedMixes.isNotEmpty)
+              TextButton(
+                onPressed: () => context.go('/saved-mixes'),
+                child: const Text(
+                  'Ver Todos',
+                  style: TextStyle(
+                    color: Color(0xFF6C63FF),
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-            ),
           ],
         ).animate().fadeIn(delay: 500.ms).slideX(begin: -0.3, end: 0),
 
         const SizedBox(height: 16),
 
-        // Mix em destaque (favorito)
-        if (favoriteMixes.isNotEmpty) ...[
-          _buildFeaturedMix(favoriteMixes.first, audioProvider),
-          const SizedBox(height: 16),
-        ],
-
-        // Mixes recentes
-        if (recentMixes.isNotEmpty) ...[
-          const Text(
-            'Recentes',
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              fontFamily: 'Montserrat',
-            ),
-          ).animate().fadeIn(delay: 600.ms),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 120,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: recentMixes.length,
-              itemBuilder: (context, index) {
-                final mix = recentMixes[index];
-                return _buildMixCard(mix, index, audioProvider);
-              },
-            ),
+        // Carrossel horizontal com botão de criar mix sempre primeiro
+        SizedBox(
+          height: 140,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            itemCount: mixManager.savedMixes.length + 1, // +1 para o botão criar
+            itemBuilder: (context, index) {
+              if (index == 0) {
+                // Primeiro item: botão de criar novo mix
+                return _buildCreateMixCard();
+              } else {
+                // Mixes salvos
+                final mix = mixManager.savedMixes[index - 1];
+                return _buildMixCard(mix, index - 1, audioProvider);
+              }
+            },
           ),
-        ],
+        ),
       ],
     );
   }
@@ -782,89 +765,155 @@ class _CategoryScreenState extends State<CategoryScreen> {
     ).animate().fadeIn(delay: 550.ms).slideY(begin: 0.3, end: 0);
   }
 
-  Widget _buildMixCard(SavedMix mix, int index, EnhancedAudioProvider audioProvider) {
+  Widget _buildCreateMixCard() {
     return Container(
-      width: 160,
-      margin: EdgeInsets.only(right: index < 2 ? 12 : 0),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF2A2A3E),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.1),
+      width: 120,
+      margin: const EdgeInsets.only(right: 12),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => context.go('/create-mix'),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF6B73FF), Color(0xFF9644FF)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF6B73FF).withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: const Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.add_circle_outline,
+                  color: Colors.white,
+                  size: 32,
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Criar\nNovo Mix',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    height: 1.2,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF6C63FF).withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: const Icon(
-                  Icons.queue_music,
-                  color: Color(0xFF6C63FF),
-                  size: 16,
-                ),
-              ),
-              const Spacer(),
-              if (mix.isFavorite)
-                const Icon(
-                  Icons.star,
-                  color: Colors.amber,
-                  size: 16,
-                ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            mix.name,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              fontFamily: 'Montserrat',
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '${mix.audios.length} música${mix.audios.length > 1 ? 's' : ''}',
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 12,
-              fontFamily: 'Open Sans',
-            ),
-          ),
-          const Spacer(),
-          GestureDetector(
-            onTap: () => _loadMix(mix, audioProvider),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              decoration: BoxDecoration(
-                color: const Color(0xFF6C63FF).withOpacity(0.2),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: const Text(
-                'Carregar',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Color(0xFF6C63FF),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
+    ).animate().fadeIn(delay: 550.ms).scale();
+  }
+
+  Widget _buildMixCard(SavedMix mix, int index, EnhancedAudioProvider audioProvider) {
+    return Container(
+      width: 140,
+      margin: const EdgeInsets.only(right: 12),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => _loadMix(mix, audioProvider),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF2A2A3E),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.1),
               ),
             ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF6C63FF).withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Icon(
+                        Icons.queue_music,
+                        color: Color(0xFF6C63FF),
+                        size: 16,
+                      ),
+                    ),
+                    const Spacer(),
+                    if (mix.isFavorite)
+                      const Icon(
+                        Icons.star,
+                        color: Colors.amber,
+                        size: 16,
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        mix.name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'Montserrat',
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${mix.audios.length} música${mix.audios.length > 1 ? 's' : ''}',
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 11,
+                          fontFamily: 'Open Sans',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF6C63FF).withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text(
+                    'Carregar',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Color(0xFF6C63FF),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ],
+        ),
       ),
-    ).animate(delay: (650 + index * 100).ms).fadeIn().slideX(begin: 0.3, end: 0);
+    ).animate(delay: (600 + index * 100).ms).fadeIn().slideX(begin: 0.3, end: 0);
   }
 
   Widget _buildActiveMixSection(EnhancedAudioProvider audioProvider) {
@@ -984,19 +1033,98 @@ class _CategoryScreenState extends State<CategoryScreen> {
     ).animate().fadeIn(delay: 450.ms).slideY(begin: 0.3, end: 0).scale(curve: Curves.easeOutBack);
   }
 
+  Widget _buildCreateMixSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Crie seu Mix Personalizado',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+          ),
+        ).animate().fadeIn(delay: 400.ms).slideX(begin: -0.3, end: 0),
+        const SizedBox(height: 16),
+        GestureDetector(
+          onTap: () {
+            context.go('/create-mix'); // Rota para a nova tela de criação de mix
+          },
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF6B73FF), Color(0xFF9644FF)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF6B73FF).withOpacity(0.3),
+                  blurRadius: 15,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                const Icon(
+                  Icons.add_circle_outline,
+                  color: Colors.white,
+                  size: 48,
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Comece a criar seu próprio mix de sons relaxantes.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Text(
+                    'Criar Novo Mix',
+                    style: TextStyle(
+                      color: Color(0xFF6B73FF),
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        )
+            .animate()
+            .fadeIn(delay: 450.ms)
+            .slideY(begin: 0.3, end: 0)
+            .scale(curve: Curves.easeOutBack),
+      ],
+    );
+  }
+
   void _loadMix(SavedMix mix, EnhancedAudioProvider audioProvider) async {
     try {
       // Limpar mix atual
       audioProvider.clearMix();
-      
+
       // Adicionar todas as músicas do mix salvo
       for (final audio in mix.audios) {
         await audioProvider.addToMix(audio);
       }
-      
+
       // Navegar para a tela de mix
       context.go('/mix-player');
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Mix "${mix.name}" carregado com sucesso!'),
@@ -1227,3 +1355,4 @@ class _CategoryScreenState extends State<CategoryScreen> {
     ];
   }
 }
+

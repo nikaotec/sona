@@ -15,6 +15,7 @@ import 'package:sona/screen/category_screen.dart';
 import 'package:sona/screen/onboarding_screen.dart';
 import 'package:sona/screen/player_screen.dart';
 import 'package:sona/screen/profile_screen.dart';
+import 'package:sona/screen/saved_mix_screen.dart';
 import 'package:sona/screen/splash_screen.dart';
 import 'package:sona/service/ad_service.dart';
 import 'package:sona/service/banner_ad_service.dart';
@@ -24,6 +25,8 @@ import 'package:sona/screen/login_screen.dart';
 import 'package:sona/screen/paywall_screen.dart';
 import 'package:sona/provider/mix_manager_provider.dart';
 import 'package:sona/provider/enhanced_audio_provider.dart';
+import 'package:sona/screen/create_mix_screen.dart';
+import 'package:sona/screen/mix_player_screen.dart';
 
 void main() async {
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
@@ -78,6 +81,9 @@ class SonaApp extends StatelessWidget {
         ),
         GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
         GoRoute(path: '/paywall', builder: (_, __) => const PaywallScreen()),
+        GoRoute(path: '/create-mix', builder: (_, __) => const CreateMixScreen()),
+        GoRoute(path: '/mix-player', builder: (_, __) => const MixPlayerScreen()),
+        GoRoute(path: '/saved-mixes', builder: (_, __) => const SavedMixesScreen()),
       ],
     );
 

@@ -89,7 +89,13 @@ class _MixPlayerScreenState extends State<MixPlayerScreen> with TickerProviderSt
         children: [
           IconButton(
             icon: const Icon(Icons.arrow_back, color: Colors.white),
-            onPressed: () => context.pop(),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/categories');
+              }
+            },
           ),
           Expanded(
             child: Text(
@@ -102,11 +108,42 @@ class _MixPlayerScreenState extends State<MixPlayerScreen> with TickerProviderSt
               ),
             ),
           ),
-          IconButton(
+          PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert, color: Colors.white),
-            onPressed: () {
-              // TODO: Implementar opções do mix (salvar, compartilhar, etc.)
-            },
+            color: const Color(0xFF2A2A3E),
+            onSelected: (value) => _handleMenuAction(value, audioProvider),
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'save',
+                child: Row(
+                  children: [
+                    Icon(Icons.save, color: Colors.white),
+                    SizedBox(width: 8),
+                    Text('Salvar Mix', style: TextStyle(color: Colors.white)),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'clear',
+                child: Row(
+                  children: [
+                    Icon(Icons.clear_all, color: Colors.red),
+                    SizedBox(width: 8),
+                    Text('Limpar Mix', style: TextStyle(color: Colors.red)),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'share',
+                child: Row(
+                  children: [
+                    Icon(Icons.share, color: Colors.white),
+                    SizedBox(width: 8),
+                    Text('Compartilhar', style: TextStyle(color: Colors.white)),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -182,58 +219,132 @@ class _MixPlayerScreenState extends State<MixPlayerScreen> with TickerProviderSt
         color: Colors.white.withOpacity(0.05),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         child: Padding(
-          padding: const EdgeInsets.all(12.0),
+          padding: const EdgeInsets.all(16.0),
           child: Column(
             children: [
               Row(
                 children: [
-                  Icon(
-                    mixTrack.isPlaying ? Icons.volume_up : Icons.volume_mute,
-                    color: mixTrack.isPlaying ? const Color(0xFF6B73FF) : Colors.white54,
+                  // Ícone do áudio
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF6B73FF), Color(0xFF9644FF)],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.music_note,
+                      color: Colors.white,
+                      size: 24,
+                    ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 16),
+                  
+                  // Informações do áudio
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           mixTrack.audio.title,
-                          style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
+                        const SizedBox(height: 4),
                         Text(
                           mixTrack.audio.category,
-                          style: const TextStyle(color: Colors.white70, fontSize: 12),
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
+                          ),
                         ),
                       ],
                     ),
                   ),
+                  
+                  // Botão de mute/unmute
+                  IconButton(
+                    icon: Icon(
+                      mixTrack.isPlaying ? Icons.volume_up : Icons.volume_off,
+                      color: mixTrack.isPlaying ? const Color(0xFF6B73FF) : Colors.red,
+                    ),
+                    onPressed: () {
+                      if (mixTrack.isPlaying) {
+                        audioProvider.pauseMixTrack(mixTrack.id);
+                      } else {
+                        audioProvider.resumeMixTrack(mixTrack.id);
+                      }
+                    },
+                  ),
+                  
+                  // Botão de remover
                   IconButton(
                     icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
                     onPressed: () {
-                      audioProvider.removeFromMix(mixTrack.id);
+                      _showRemoveTrackDialog(context, audioProvider, mixTrack);
                     },
                   ),
                 ],
               ),
-              SliderTheme(
-                data: SliderTheme.of(context).copyWith(
-                  activeTrackColor: const Color(0xFF6B73FF),
-                  inactiveTrackColor: Colors.white24,
-                  thumbColor: const Color(0xFF6B73FF),
-                  thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
-                  trackHeight: 4,
-                  overlayShape: SliderComponentShape.noOverlay,
-                ),
-                child: Slider(
-                  value: mixTrack.volume,
-                  min: 0.0,
-                  max: 1.0,
-                  onChanged: (value) {
-                    audioProvider.setMixAudioVolume(mixTrack.id, value);
-                  },
-                ),
+              
+              const SizedBox(height: 16),
+              
+              // Controle de volume individual
+              Row(
+                children: [
+                  const Icon(
+                    Icons.volume_down,
+                    color: Colors.white54,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: SliderTheme(
+                      data: SliderTheme.of(context).copyWith(
+                        activeTrackColor: const Color(0xFF6B73FF),
+                        inactiveTrackColor: Colors.white24,
+                        thumbColor: const Color(0xFF6B73FF),
+                        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
+                        trackHeight: 4,
+                        overlayShape: const RoundSliderOverlayShape(overlayRadius: 20),
+                      ),
+                      child: Slider(
+                        value: mixTrack.volume.clamp(0.0, 1.0),
+                        min: 0.0,
+                        max: 1.0,
+                        onChanged: (value) async {
+                          await audioProvider.setMixAudioVolume(mixTrack.id, value);
+                        },
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Icon(
+                    Icons.volume_up,
+                    color: Colors.white54,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    width: 40,
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      '${(mixTrack.volume * 100).round()}%',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -299,6 +410,110 @@ class _MixPlayerScreenState extends State<MixPlayerScreen> with TickerProviderSt
     ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.3, end: 0);
   }
 
+  void _handleMenuAction(String action, EnhancedAudioProvider audioProvider) {
+    switch (action) {
+      case 'save':
+        _showSaveMixDialog(audioProvider);
+        break;
+      case 'clear':
+        _showClearMixDialog(audioProvider);
+        break;
+      case 'share':
+        _shareMix(audioProvider);
+        break;
+    }
+  }
+
+  void _showSaveMixDialog(EnhancedAudioProvider audioProvider) {
+    final TextEditingController nameController = TextEditingController();
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF2A2A3E),
+        title: const Text('Salvar Mix', style: TextStyle(color: Colors.white)),
+        content: TextField(
+          controller: nameController,
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(
+            hintText: 'Nome do mix',
+            hintStyle: TextStyle(color: Colors.white54),
+            enabledBorder: UnderlineInputBorder(
+              borderSide: BorderSide(color: Color(0xFF6B73FF)),
+            ),
+            focusedBorder: UnderlineInputBorder(
+              borderSide: BorderSide(color: Color(0xFF6B73FF)),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar', style: TextStyle(color: Colors.white54)),
+          ),
+          TextButton(
+            onPressed: () {
+              if (nameController.text.trim().isNotEmpty) {
+                // TODO: Implementar salvamento do mix
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Mix salvo com sucesso!'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              }
+            },
+            child: const Text('Salvar', style: TextStyle(color: Color(0xFF6B73FF))),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showClearMixDialog(EnhancedAudioProvider audioProvider) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF2A2A3E),
+        title: const Text('Limpar Mix', style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'Tem certeza que deseja remover todas as músicas do mix?',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar', style: TextStyle(color: Colors.white54)),
+          ),
+          TextButton(
+            onPressed: () {
+              audioProvider.clearMix();
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Mix limpo com sucesso!'),
+                  backgroundColor: Colors.orange,
+                ),
+              );
+            },
+            child: const Text('Limpar', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _shareMix(EnhancedAudioProvider audioProvider) {
+    // TODO: Implementar compartilhamento do mix
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Funcionalidade de compartilhamento em desenvolvimento'),
+        backgroundColor: Colors.blue,
+      ),
+    );
+  }
+
   Widget _buildGlobalControlButton({required IconData icon, required String label, required VoidCallback onPressed}) {
     return Column(
       children: [
@@ -316,3 +531,48 @@ class _MixPlayerScreenState extends State<MixPlayerScreen> with TickerProviderSt
   }
 }
 
+
+
+  void _showRemoveTrackDialog(BuildContext context, EnhancedAudioProvider audioProvider, MixTrackModel mixTrack) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF2A2A3E),
+          title: const Text(
+            'Remover Som',
+            style: TextStyle(color: Colors.white),
+          ),
+          content: Text(
+            'Deseja remover "${mixTrack.audio.title}" do mix?',
+            style: const TextStyle(color: Colors.white70),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text(
+                'Cancelar',
+                style: TextStyle(color: Colors.white54),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                audioProvider.removeFromMix(mixTrack.id);
+                Navigator.of(context).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('${mixTrack.audio.title} removido do mix'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              },
+              child: const Text(
+                'Remover',
+                style: TextStyle(color: Colors.red),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }

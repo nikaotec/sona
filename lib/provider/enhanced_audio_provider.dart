@@ -199,10 +199,29 @@ class EnhancedAudioProvider extends ChangeNotifier {
 
   // ========== FUNCIONALIDADES DE MIX ==========
 
+  /// Carrega uma lista de áudios no mix (substitui o mix atual)
+  Future<void> loadMix(List<AudioModel> audios) async {
+    // Limpa o mix atual
+    clearMix();
+    
+    // Adiciona cada áudio ao mix
+    for (final audio in audios) {
+      await addToMix(audio, volume: audio.volume ?? 0.7);
+    }
+    
+    debugPrint("Mix carregado com ${audios.length} áudios");
+  }
+
   /// Adiciona áudio ao mix
   Future<void> addToMix(AudioModel audio, {double volume = 1.0}) async {
     try {
       final playerId = 'mix_${audio.id}';
+      
+      // Verifica se já existe no mix para evitar duplicação
+      if (_activeMix.containsKey(playerId)) {
+        debugPrint("Áudio ${audio.title} já está no mix");
+        return;
+      }
       
       await _audioService.addToMix(playerId, audio.url, volume: volume);
       
@@ -266,6 +285,24 @@ class EnhancedAudioProvider extends ChangeNotifier {
       await _audioService.play(playerId);
     }
     notifyListeners();
+  }
+
+  /// Pausa um áudio específico no mix
+  void pauseMixTrack(String audioId) {
+    final playerId = 'mix_$audioId';
+    if (_activeMix.containsKey(playerId)) {
+      _audioService.pause(playerId);
+      notifyListeners();
+    }
+  }
+
+  /// Resume um áudio específico no mix
+  Future<void> resumeMixTrack(String audioId) async {
+    final playerId = 'mix_$audioId';
+    if (_activeMix.containsKey(playerId)) {
+      await _audioService.play(playerId);
+      notifyListeners();
+    }
   }
 
   /// Verifica se um áudio está no mix
@@ -370,4 +407,3 @@ class EnhancedAudioProvider extends ChangeNotifier {
     seekMainAudio(position);
   }
 }
-

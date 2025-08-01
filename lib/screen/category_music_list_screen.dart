@@ -675,24 +675,46 @@ class _CategoryMusicListScreenState extends State<CategoryMusicListScreen>
   }
 
   void _handleMixToggle(AudioModel audio, EnhancedAudioProvider audioProvider) async {
-    if (audioProvider.isInMix(audio.id)) {
-      audioProvider.removeFromMix(audio.id);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${audio.title} removido do mix'),
-          backgroundColor: Colors.orange,
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    } else {
-      await audioProvider.addToMix(audio);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${audio.title} adicionado ao mix'),
-          backgroundColor: const Color(0xFF6C63FF),
-          duration: const Duration(seconds: 2),
-        ),
-      );
+    try {
+      if (audioProvider.isInMix(audio.id)) {
+        audioProvider.removeFromMix(audio.id);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${audio.title} removido do mix'),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      } else {
+        // Adiciona um pequeno delay para evitar duplo clique
+        await Future.delayed(const Duration(milliseconds: 100));
+        
+        if (!audioProvider.isInMix(audio.id)) {
+          await audioProvider.addToMix(audio);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('${audio.title} adicionado ao mix'),
+                backgroundColor: const Color(0xFF6C63FF),
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("Erro ao alterar mix: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erro ao alterar mix: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
     }
   }
 
@@ -1396,5 +1418,4 @@ class _EnhancedMusicCardState extends State<EnhancedMusicCard>
     return '$twoDigitMinutes:$twoDigitSeconds';
   }
 }
-
 
