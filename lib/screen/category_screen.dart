@@ -567,62 +567,79 @@ class _CategoryScreenState extends State<CategoryScreen> {
   }
 
   Widget _buildPopularGrid(List<Map<String, dynamic>> popularItems) {
-    return Row(
-      children:
-          popularItems.asMap().entries.map((entry) {
-            final index = entry.key;
-            final item = entry.value;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Calcula a altura baseada na largura disponível
+        final itemWidth = (constraints.maxWidth - 12) / 2; // 2 itens por linha com espaçamento
+        final itemHeight = itemWidth * 0.8; // Proporção 4:3.2
+        
+        return SizedBox(
+          height: itemHeight,
+          child: Row(
+            children: popularItems.asMap().entries.map((entry) {
+              final index = entry.key;
+              final item = entry.value;
 
-            return Expanded(
-              child: Container(
-                    margin: EdgeInsets.only(
-                      right: index < popularItems.length - 1 ? 12 : 0,
-                    ),
-                    height: 160,
-                    decoration: BoxDecoration(
-                      color: item['color'] as Color,
+              return Expanded(
+                child: Container(
+                  margin: EdgeInsets.only(
+                    right: index < popularItems.length - 1 ? 12 : 0,
+                  ),
+                  decoration: BoxDecoration(
+                    color: item['color'] as Color,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
                       borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(16),
-                        onTap: () {
-                          // Navegar para o player ou lista específica
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              Text(
+                      onTap: () {
+                        // Navegar para o player ou lista específica
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            Flexible(
+                              child: Text(
                                 item['title'] as String,
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
                                 ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              const SizedBox(height: 4),
-                              Text(
+                            ),
+                            const SizedBox(height: 4),
+                            Flexible(
+                              child: Text(
                                 item['subtitle'] as String,
                                 style: const TextStyle(
                                   color: Colors.white70,
                                   fontSize: 12,
                                 ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
-                  )
-                  .animate(delay: (700 + index * 100).ms)
-                  .fadeIn()
-                  .slideY(begin: 0.3, end: 0),
-            );
-          }).toList(),
+                  ),
+                )
+                .animate(delay: (700 + index * 100).ms)
+                .fadeIn()
+                .slideY(begin: 0.3, end: 0),
+              );
+            }).toList(),
+          ),
+        );
+      },
     );
   }
 
@@ -1321,8 +1338,39 @@ class _CategoryScreenState extends State<CategoryScreen> {
       }
     }
 
-    return allCategories;
-  }
+    return allCategories;  }
+
+  // // Método para carregar e reproduzir um mix automaticamente
+  // Future<void> _loadMix(SavedMix mix, EnhancedAudioProvider audioProvider) async {
+  //   try {
+  //     // Carrega o mix no audio provider
+  //     await audioProvider.loadMix(mix.audios);
+      
+  //     // Inicia a reprodução automática de todas as músicas do mix
+  //     await audioProvider.resumeMix();
+      
+  //     // Navega para o mix player
+  //     context.go('/mix-player');
+      
+  //     // Feedback para o usuário
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(
+  //         content: Text('Mix "${mix.name}" carregado e reproduzindo'),
+  //         backgroundColor: const Color(0xFF6C63FF),
+  //         duration: const Duration(seconds: 2),
+  //       ),
+  //     );
+  //   } catch (e) {
+  //     // Tratamento de erro
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(
+  //         content: Text('Erro ao carregar mix: $e'),
+  //         backgroundColor: Colors.red,
+  //         duration: const Duration(seconds: 3),
+  //       ),
+  //     );
+  //   }
+  // }
 
   List<Map<String, dynamic>> _getPopularItems() {
     return [
@@ -1355,4 +1403,3 @@ class _CategoryScreenState extends State<CategoryScreen> {
     ];
   }
 }
-
